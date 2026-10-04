@@ -2572,10 +2572,16 @@ function identifyChord(midis){
           fam: 'min', color:'#8a92a3', quality: '未匹配标准和弦 ｜ 音集: ' + pcs.map(pc=>names[pc]).join(' ')};
 }
 
-/* 按键变化 → 更新显示 + 识别 */
+/* 按键变化 → 更新显示 + 识别
+   注意：松开所有键时保留「最近一次识别结果」，不清空。
+   否则按钮会在松手瞬间又被禁用，用户根本来不及点「试听 / 加入 / 指法」。 */
 function onHeldChanged(){
   if(midiHeld.size > 0) clearPadLit();   // 手动弹奏时清掉和弦点亮
   renderVirtKeys();
+  if(midiHeld.size === 0){               // 全部松开：保留上次结果，仅刷新按钮可用态
+    if(lastRecognized) refreshMcButtons();
+    return;
+  }
   const rec = identifyChord([...midiHeld]);
   showChordResult(rec);
 }

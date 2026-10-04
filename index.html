@@ -952,10 +952,12 @@ function playArp(cells, seqBuilder){
 }
 
 function playChord(rowIdx, entry, cell){
-  const {ivs, rootPc, noteNames} = getChord(rowIdx, entry);
+  const {ivs, rootPc, noteNames, label} = getChord(rowIdx, entry);
   const root = rootMidiOf(rootPc);
   const tones = ivs.map(v=>root+v);
   showChordOnPad(rootPc, ivs);
+  // 联动右侧 MIDI 卡片：让「试听 / 加入 / 指法」对点选的和弦也可点
+  showChordResult({rootPc, ivs, label: label || cell.textContent, color: FAM_COLOR[entry.fam], quality: noteNames.join(' ')});
   playArp([cell], ()=>buildPattern(tones, patSel.value, (+tempo.value)/1000));
 }
 

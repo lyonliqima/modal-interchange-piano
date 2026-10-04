@@ -1019,8 +1019,9 @@ if(legend){
    ============================================================ */
 const seq = [];   // {rowIdx, deg, sym, ivs, label, color, notes}
 
-/* 电子音色：单音符合成器 */
-function synthNote(freq, t, dur, vel, tone){
+/* 电子音色：单音符合成器（when 为相对时间，与 pluck 一致） */
+function synthNote(freq, when, dur, vel, tone){
+  const t = AC.currentTime + when;
   const g = AC.createGain();
   g.gain.setValueAtTime(0.0001, t);
   g.connect(master);
@@ -2418,7 +2419,7 @@ function bindComputerKeys(){
     const el = document.querySelector(`.mc-wkey[data-midi="${m}"],.mc-bkey[data-midi="${m}"]`);
     if(el) el.classList.add('down');
     ensureAC();
-    seqNote(m, AC.currentTime + 0.01, 1.6, 0.13, toneSel.value);
+    seqNote(m, 0.01, 1.6, 0.13, toneSel.value);
     onHeldChanged();
   });
   window.addEventListener('keyup', ev=>{
@@ -2560,7 +2561,7 @@ function bindMidiInput(inp){
       midiHeld.add(note);
       // 试听（用当前音色轻声）
       ensureAC();
-      seqNote(note, AC.currentTime + 0.01, 1.6, 0.13, toneSel.value);
+      seqNote(note, 0.01, 1.6, 0.13, toneSel.value);
       onHeldChanged();
     } else if(cmd === 0x80 || (cmd === 0x90 && vel === 0)){   // note off
       midiHeld.delete(note);

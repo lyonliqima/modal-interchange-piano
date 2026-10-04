@@ -117,6 +117,44 @@
     background:#161b26;color:#c3c9d4;font-size:12px;cursor:pointer;font-weight:600;
   }
   .gt-pop .foot button:hover{border-color:#4a5264;color:#fff;}
+  /* ---- 和弦变体弹窗 ---- */
+  .var-pop{
+    position:fixed;z-index:60;width:330px;
+    background:#10141d;border:2px solid #3a4150;border-radius:14px;
+    padding:12px;box-shadow:0 14px 48px rgba(0,0,0,.7);
+    display:none;
+  }
+  .var-pop.show{display:block;}
+  .var-pop h3{font-size:14px;color:#fff;margin-bottom:2px;}
+  .var-pop .hint{font-size:11.5px;color:#8a92a3;margin-bottom:10px;line-height:1.5;}
+  .var-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
+  .var-preset{
+    background:#161b26;border:2px solid #2c3342;border-radius:8px;padding:6px 2px;
+    cursor:pointer;text-align:center;color:#c3c9d4;font-size:11px;font-weight:600;
+    transition:border-color .12s, background .12s;
+  }
+  .var-preset:hover{border-color:#38bdf8;background:#0f1c26;}
+  .var-notes{display:flex;flex-direction:column;gap:6px;border-top:1px solid #232a38;padding-top:10px;}
+  .var-note-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#c3c9d4;}
+  .var-note-row .vn{width:78px;color:#8a92a3;font-size:11.5px;}
+  .var-note-row button{
+    flex:1;padding:4px 0;border-radius:7px;border:1.5px solid #2c3342;
+    background:#161b26;color:#c3c9d4;font-size:12px;cursor:pointer;font-weight:600;
+  }
+  .var-note-row button:hover:not(:disabled){border-color:#38bdf8;color:#fff;}
+  .var-note-row button:disabled{opacity:.3;cursor:default;}
+  .var-pop .foot{display:flex;gap:6px;margin-top:10px;}
+  .var-pop .foot button{
+    flex:1;padding:6px 0;border-radius:8px;border:1.5px solid #2c3342;
+    background:#161b26;color:#c3c9d4;font-size:12px;cursor:pointer;font-weight:600;
+  }
+  .var-pop .foot button:hover{border-color:#4a5264;color:#fff;}
+  .barcell .vb{
+    position:absolute;top:1px;right:37px;background:none;border:none;color:#8a92a3;
+    font-size:11px;cursor:pointer;padding:1px 3px;line-height:1;border-radius:3px;display:none;
+  }
+  .barcell.filled .vb{display:block;}
+  .barcell .vb:hover{color:#38bdf8;}
   /* ---- MIDI 和弦识别卡片 ---- */
   .midi-card{
     margin-top:14px;background:#10141d;border:2px solid #2c3342;border-radius:12px;
@@ -218,7 +256,7 @@
   /* 打印：只打谱面 */
   @media print{
     body{background:#fff;padding:0;}
-    .bar,.panel,.legend,.tip,.grid,h1,.sub,.neg-pop,.gt-pop{display:none !important;}
+    .bar,.panel,.legend,.tip,.grid,h1,.sub,.neg-pop,.gt-pop,.var-pop{display:none !important;}
     .layout{display:block;}
     .sheet{display:block !important;background:#fff;padding:0;}
     .sheet-bar{break-inside:avoid;}
@@ -496,6 +534,17 @@
   <div class="foot" data-page-node-id="iKLpzeIaOpz7htTQqNhMq7">
     <button id="gtCancel" data-page-node-id="1MSA4cDhYlpnF3aCKCBUGu">取消</button>
     <button id="gtClear" style="color:#4ade80;" data-page-node-id="ni04WtS3bWHEbqErABKcRv">移除指法图</button>
+  </div>
+</div>
+
+<div class="var-pop" id="varPop">
+  <h3 id="varTitle">和弦变体</h3>
+  <div class="hint">上半：常用变体一键替换。下半：单独升降某个和弦音（×2 = 该音升八度）。整和弦移调用底部按钮。</div>
+  <div class="var-presets" id="varPresets"></div>
+  <div class="var-notes" id="varNotes"></div>
+  <div class="foot">
+    <button id="varCancel">取消</button>
+    <button id="varReset" style="color:#fbbf24;">还原原和弦</button>
   </div>
 </div>
 
@@ -1322,6 +1371,168 @@ document.addEventListener('contextmenu', ev=>{
 });
 
 /* ============================================================
+   和弦变体：预设替换 + 逐音升降 + 整和弦移调
+   存储模式：ch.var = {orig}（与 ch.neg 同构）；
+   变体后清吉他指法（音已变，旧指法不再成立）。
+   ============================================================ */
+const varPop = document.getElementById('varPop');
+const varTitle = document.getElementById('varTitle');
+const varPresetsEl = document.getElementById('varPresets');
+const varNotesEl = document.getElementById('varNotes');
+let varTarget = null;   // {si, bi}
+
+/* 音程序号 → 记号名（用于逐音行显示，如 ♭3 / 5 / ♯7） */
+const IV_LABEL = {0:'1',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♭5',7:'5',8:'♯5',9:'6',10:'♭7',11:'7',12:'8'};
+
+/* 预设变体表：name 显示名，ivs 完整音程表。仅当当前和弦能干净映射时启用 */
+function variantPresets(ch){
+  const base = ch.var ? ch.var.orig : ch;
+  const pcs = new Set(base.ivs.map(v=>((v%12)+12)%12));
+  const rootPc = base.rootPc;
+  const has = iv => pcs.has(iv);
+  return [
+    {name:'sus4', ok:!has(3)&&!has(4), ivs: replaceTone(base.ivs, 3, 5) || replaceTone(base.ivs, 4, 5)},
+    {name:'sus2', ok:!has(3)&&!has(4), ivs: replaceTone(base.ivs, 3, 2) || replaceTone(base.ivs, 4, 2)},
+    {name:'add9', ok:has(3)||has(4),   ivs: !pcs.has(2) && !pcs.has(9) ? [...base.ivs, 14] : null},
+    {name:'6',    ok:(has(3)||has(4))&&!has(9), ivs: [...base.ivs, 9]},
+    {name:'m',    ok:has(4),           ivs: replaceTone(base.ivs, 4, 3)},
+    {name:'M',    ok:has(3),           ivs: replaceTone(base.ivs, 3, 4)},
+    {name:'♭5',   ok:has(7),           ivs: replaceTone(base.ivs, 7, 6)},
+    {name:'♯5',   ok:has(7),           ivs: replaceTone(base.ivs, 7, 8)},
+    {name:'power',ok:has(3)||has(4),   ivs: [0,7,12]},
+    {name:'7sus4',ok:(has(3)||has(4))&&base.ivs.length>3&&has(10), ivs: [...(replaceTone(base.ivs,3,5)||replaceTone(base.ivs,4,5)), 10].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a-b)},
+    {name:'dim',  ok:has(4)&&has(7),   ivs: (r=>r&&replaceTone(r,7,6))(replaceTone(base.ivs,4,3))},
+    {name:'ø7',   ok:has(4)&&base.ivs.length>3&&has(10), ivs: [0,3,6,10]},
+  ];
+}
+
+/* 把音程 old 换成 nw（返回新数组；找不到返回 null） */
+function replaceTone(ivs, old, nw){
+  if(!ivs.includes(old)) return null;
+  return [...new Set(ivs.map(v=>v===old?nw:v))].sort((a,b)=>a-b);
+}
+
+/* 按音程结构反推和弦记号（变体后的新 label 用）
+   策略：① 精确表命中直接用；② 拆成「三和弦 + 七音 + 附加音」三段拼接；
+   ③ 都不行则兜底列出音程。 */
+function variantSym(ivs){
+  const set = [...new Set(ivs.map(v=>((v%12)+12)%12))].sort((a,b)=>a-b);
+  const k = set.join(',');
+  // ① 精确命中
+  const EXACT = {'0,4,7':'', '0,3,7':'m', '0,3,6':'°', '0,4,8':'+', '0,2,7':'sus2', '0,5,7':'sus4', '0,7':'5',
+    '0,4,7,9':'6', '0,3,7,9':'m6', '0,4,7,10':'7', '0,3,7,10':'m7', '0,4,7,11':'Δ', '0,3,7,11':'mΔ',
+    '0,3,6,10':'ø', '0,3,6,9':'°7', '0,3,7,14':'m(add9)', '0,3,6,7':'(♭5)',
+    '0,4,8,10':'7♯5', '0,4,6,10':'7♭5', '0,4,7,2':'add9', '0,3,7,2':'m(add9)',
+    '0,4,7,10,2':'9', '0,3,7,10,2':'m9', '0,4,7,11,2':'Δ9', '0,3,7,11,2':'mΔ9',
+    '0,5,7,10':'7sus4', '0,2,7,10':'7sus2'};
+  if(EXACT[k] !== undefined) return EXACT[k];
+  // ② 拆段拼接：core(三和弦) + seventh(七音) + ext(附加音)
+  const coreSet = set.filter(v=>[0,3,4,7,8].includes(v));
+  const CORE = {'0,4,7':'', '0,3,7':'m', '0,3,6':'°', '0,4,8':'+', '0,7':'5'};
+  let sym = CORE[coreSet.join(',')] ?? '';
+  const hasMinor3 = coreSet.includes(3);
+  const SEV = {9:'6', 10:'7', 11:'Δ'};
+  const sev = set.find(v=>[9,10,11].includes(v));
+  const hasNine = set.includes(2);
+  // 6/Δ 与三和弦搭配已是最常见命名（C6, CΔ）；属七+九音 = 合并为九和弦（9/m9）
+  if(sev===9 && hasNine) sym += '';        // 6 和 9 同时在 → 不标 6
+  else if(sev===10 && hasNine) sym += '';  // 属七 + 9 → 由 ext 段标 '9'
+  else if(sev===11 && hasNine) sym += 'Δ'; // 大七 + 9 → Δ9
+  else if(sev!==undefined) sym += SEV[sev] ?? '';
+  const EXT = {2: (sev===11 && hasNine) ? '9' : ((sev===10 && hasNine) ? '9' : 'add9'), 1:'add♭9', 5:'add4', 6:'♭5', 8:'♯5'};
+  set.filter(v=>[1,2,5,6,8].includes(v)).forEach(v=>{
+    // 已在 CORE 处理过的 ♭5/♯5（°/+）不重复
+    if((v===6&&coreSet.join(',')==='0,3,6')||(v===8&&coreSet.join(',')==='0,4,8')) return;
+    sym += EXT[v];
+  });
+  if(sym !== '') return sym;
+  // ③ 兜底
+  return '(' + set.map(v=>IV_LABEL[v]||v).join(' ') + ')';
+}
+
+function openVarPop(si, bi, x, y){
+  varTarget = {si, bi};
+  const ch = sections[si].bars[bi];
+  if(!ch){ closeVarPop(); return; }
+  const base = ch.var ? ch.var.orig : ch;
+  const names = keyNames();
+  varTitle.textContent = '和弦变体 · ' + base.label;
+  /* --- 预设区 --- */
+  varPresetsEl.innerHTML = '';
+  variantPresets(ch).forEach(p=>{
+    if(!p.ok || !p.ivs) return;
+    const b = document.createElement('button');
+    b.className = 'var-preset';
+    b.innerHTML = `<div style="font-weight:700;">${p.name}</div><div style="font-size:10px;color:#8a92a3;">${names[base.rootPc]}${variantSym(p.ivs)}</div>`;
+    b.addEventListener('click', ()=>{
+      const newCh = {rootPc: base.rootPc, ivs: p.ivs, label: names[base.rootPc] + variantSym(p.ivs), color:'var(--c-lyd)', var:{orig: {...base}}};
+      sections[si].bars[bi] = newCh;
+      renderSections();
+      refreshVarPopAfterChange(si, bi);
+      playChordData(newCh, document.querySelector(`.barcell[data-si="${si}"][data-bi="${bi}"]`));
+    });
+    varPresetsEl.appendChild(b);
+  });
+  /* --- 逐音区 --- */
+  varNotesEl.innerHTML = '';
+  const tones = [...new Set(base.ivs)].sort((a,b)=>a-b);
+  tones.forEach(iv=>{
+    const row = document.createElement('div');
+    row.className = 'var-note-row';
+    const noteName = names[(base.rootPc + iv) % 12];
+    row.innerHTML = `<span class="vn">${noteName}（${IV_LABEL[((iv%12)+12)%12]||iv}）</span>
+      <button data-d="-1" ${iv<=1?'disabled':''}>♭</button>
+      <button data-d="0" ${iv===0?'disabled':''}>×2</button>
+      <button data-d="1" ${iv>=11||iv===0?'disabled':''}>♯</button>`;
+    row.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const d = +btn.dataset.d;
+        let newIvs;
+        if(d===0){ newIvs = base.ivs.map(v=>v===iv?v+12:v); }
+        else { newIvs = base.ivs.map(v=>v===iv?v+d:v); }
+        newIvs = [...new Set(newIvs)].sort((a,b)=>a-b);
+        if(!newIvs.includes(0)) return;   // 根音必须保留（如把 ♭2 升成 3 与三音撞音等情况）
+        const newCh = {rootPc: base.rootPc, ivs: newIvs, label: names[base.rootPc] + variantSym(newIvs), color:'var(--c-lyd)', var:{orig: {...base}}};
+        sections[si].bars[bi] = newCh;
+        renderSections();
+        refreshVarPopAfterChange(si, bi);
+        playChordData(newCh, document.querySelector(`.barcell[data-si="${si}"][data-bi="${bi}"]`));
+      });
+    });
+    varNotesEl.appendChild(row);
+  });
+  document.getElementById('varReset').style.display = ch.var ? '' : 'none';
+  varPop.classList.add('show');
+  positionVarPop(x, y);
+}
+
+function positionVarPop(x, y){
+  const r = varPop.getBoundingClientRect();
+  varPop.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
+  varPop.style.top  = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + 'px';
+}
+
+/* 变体点击后弹窗保持打开并刷新到新状态（允许连续叠加操作） */
+function refreshVarPopAfterChange(si, bi){
+  if(!varTarget || varTarget.si!==si || varTarget.bi!==bi) return;
+  const anchor = varPop;
+  const x = anchor.offsetLeft, y = anchor.offsetTop;
+  openVarPop(si, bi, x, y);
+}
+
+function closeVarPop(){ varPop.classList.remove('show'); varTarget = null; }
+document.getElementById('varCancel').addEventListener('click', closeVarPop);
+document.getElementById('varReset').addEventListener('click', ()=>{
+  if(!varTarget) return;
+  const ch = sections[varTarget.si].bars[varTarget.bi];
+  if(ch && ch.var){ sections[varTarget.si].bars[varTarget.bi] = {...ch.var.orig}; renderSections(); }
+  closeVarPop();
+});
+document.addEventListener('click', ev=>{
+  if(varPop.classList.contains('show') && !varPop.contains(ev.target) && !ev.target.classList.contains('vb')) closeVarPop();
+});
+
+/* ============================================================
    歌曲编辑器：段落(sections) × 小节(bars) + 整曲播放
    ============================================================ */
 const SEC_TYPES = ['Intro','Verse','Pre-Chorus','Chorus','Bridge','Outro'];
@@ -1400,7 +1611,12 @@ function renderSections(){
       b.dataset.si = si; b.dataset.bi = bi;
       if(ch){
         b.style.color = ch.color;
-        b.innerHTML = `<span class="bn">${bi+1}</span>${ch.label}<button class="rm" title="清空此小节">✕</button><button class="gt" title="选择吉他指法">🎸</button>`;
+        b.innerHTML = `<span class="bn">${bi+1}</span>${ch.label}<button class="vb" title="和弦变体：sus/add9/升降音">±</button><button class="rm" title="清空此小节">✕</button><button class="gt" title="选择吉他指法">🎸</button>`;
+        b.querySelector('.vb').addEventListener('click', ev=>{
+          ev.stopPropagation();
+          const r = ev.target.getBoundingClientRect();
+          openVarPop(si, bi, r.left - 60, r.bottom + 6);
+        });
         b.querySelector('.rm').addEventListener('click', ev=>{
           ev.stopPropagation();
           sec.bars[bi] = null; renderSections();
@@ -1621,6 +1837,7 @@ function serializeSong(){
         label: ch.label, color: ch.color,
         neg: ch.neg ? {axisIdx: ch.neg.axisIdx, orig: ch.neg.orig} : null,
         gt: ch.gt ? {frets: ch.gt.frets} : null,
+        var: ch.var ? {orig: ch.var.orig} : null,
       } : null),
     })),
   };
@@ -1643,6 +1860,7 @@ function loadSongData(data){
         label: ch.label, color: ch.color,
         neg: ch.neg ? {axisIdx: ch.neg.axisIdx, orig: ch.neg.orig} : null,
         gt: ch.gt ? {frets: ch.gt.frets} : null,
+        var: ch.var ? {orig: ch.var.orig} : null,
       } : null),
     });
   });

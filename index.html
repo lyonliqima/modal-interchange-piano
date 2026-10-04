@@ -1452,9 +1452,10 @@ let varTarget = null;   // {si, bi}
 /* 音程序号 → 记号名（用于逐音行显示，如 ♭3 / 5 / ♯7） */
 const IV_LABEL = {0:'1',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♭5',7:'5',8:'♯5',9:'6',10:'♭7',11:'7',12:'8'};
 
-/* 预设变体表：name 显示名，ivs 完整音程表。仅当当前和弦能干净映射时启用 */
+/* 预设变体表：name 显示名，ivs 完整音程表。仅当当前和弦能干净映射时启用
+   注意：传入的是「当前和弦」，以便连续叠加时基于最新状态计算 */
 function variantPresets(ch){
-  const base = ch.var ? ch.var.orig : ch;
+  const base = ch;
   const pcs = new Set(base.ivs.map(v=>((v%12)+12)%12));
   const rootPc = base.rootPc;
   const has = iv => pcs.has(iv);
@@ -1586,8 +1587,9 @@ const QUALITY_MAP = [
   {cat:'十三和弦', tag:'m13',   ivs:[0,3,7,10,14,17,21]},
 ];
 
-/* 渲染性质全表分组列表：同根音直接换性质 */
-function renderVarGroups(si, bi, base){
+/* 渲染性质全表分组列表：同根音直接换性质
+   cur = 当前和弦（用于高亮比对与生成）；orig = 原和弦（写入 var.orig 供还原） */
+function renderVarGroups(si, bi, cur, orig){
   const groupsEl = document.getElementById('varGroups');
   const names = keyNames();
   groupsEl.innerHTML = '';
@@ -1607,12 +1609,12 @@ function renderVarGroups(si, bi, base){
     const grid = groupsEl.querySelector(`.var-grid[data-cat="${q.cat}"]`);
     const b = document.createElement('button');
     b.className = 'var-preset';
-    const cur = (base.ivs.map(v=>((v%12)+12)%12).sort((a,b)=>a-b).join(',') === q.ivs.map(v=>((v%12)+12)%12).sort((a,c)=>a-c).join(','));
-    if(cur) b.style.borderColor = '#38bdf8';
+    const curIv = cur.ivs.map(v=>((v%12)+12)%12).sort((a,b)=>a-b).join(',') === q.ivs.map(v=>((v%12)+12)%12).sort((a,c)=>a-c).join(',');
+    if(curIv) b.style.borderColor = '#38bdf8';
     b.innerHTML = `<div style="font-weight:700;">${q.tag||'maj'}</div>`;
-    b.title = names[base.rootPc] + (q.tag||'');
+    b.title = names[cur.rootPc] + (q.tag||'');
     b.addEventListener('click', ()=>{
-      const newCh = {rootPc: base.rootPc, ivs: q.ivs, label: names[base.rootPc] + (q.tag||''), color:'var(--c-lyd)', var:{orig: {...base}}};
+      const newCh = {rootPc: cur.rootPc, ivs: q.ivs, label: names[cur.rootPc] + (q.tag||''), color:'var(--c-lyd)', var:{orig: {...orig}}};
       sections[si].bars[bi] = newCh;
       renderSections();
       refreshVarPopAfterChange(si, bi);
@@ -1626,18 +1628,20 @@ function openVarPop(si, bi, x, y){
   varTarget = {si, bi};
   const ch = sections[si].bars[bi];
   if(!ch){ closeVarPop(); return; }
-  const base = ch.var ? ch.var.orig : ch;
+  // cur = 当前和弦（叠加操作的基准）；orig = 最初原和弦（供「还原」用）
+  const cur = ch;
+  const orig = ch.var ? ch.var.orig : ch;
   const names = keyNames();
-  varTitle.textContent = '和弦变体 · ' + base.label;
+  varTitle.textContent = '和弦变体 · ' + cur.label;
   /* --- 预设区 --- */
   varPresetsEl.innerHTML = '';
-  variantPresets(ch).forEach(p=>{
+  variantPresets(cur).forEach(p=>{
     if(!p.ok || !p.ivs) return;
     const b = document.createElement('button');
     b.className = 'var-preset';
-    b.innerHTML = `<div style="font-weight:700;">${p.name}</div><div style="font-size:10px;color:#8a92a3;">${names[base.rootPc]}${variantSym(p.ivs)}</div>`;
+    b.innerHTML = `<div style="font-weight:700;">${p.name}</div><div style="font-size:10px;color:#8a92a3;">${names[cur.rootPc]}${variantSym(p.ivs)}</div>`;
     b.addEventListener('click', ()=>{
-      const newCh = {rootPc: base.rootPc, ivs: p.ivs, label: names[base.rootPc] + variantSym(p.ivs), color:'var(--c-lyd)', var:{orig: {...base}}};
+      const newCh = {rootPc: cur.rootPc, ivs: p.ivs, label: names[cur.rootPc] + variantSym(p.ivs), color:'var(--c-lyd)', var:{orig: {...orig}}};
       sections[si].bars[bi] = newCh;
       renderSections();
       refreshVarPopAfterChange(si, bi);
@@ -1646,14 +1650,14 @@ function openVarPop(si, bi, x, y){
     varPresetsEl.appendChild(b);
   });
   /* --- 性质全表区 --- */
-  renderVarGroups(si, bi, base);
+  renderVarGroups(si, bi, cur, orig);
   /* --- 逐音区 --- */
   varNotesEl.innerHTML = '';
-  const tones = [...new Set(base.ivs)].sort((a,b)=>a-b);
+  const tones = [...new Set(cur.ivs)].sort((a,b)=>a-b);
   tones.forEach(iv=>{
     const row = document.createElement('div');
     row.className = 'var-note-row';
-    const noteName = names[(base.rootPc + iv) % 12];
+    const noteName = names[(cur.rootPc + iv) % 12];
     row.innerHTML = `<span class="vn">${noteName}（${IV_LABEL[((iv%12)+12)%12]||iv}）</span>
       <button data-d="-1" ${iv<=1?'disabled':''}>♭</button>
       <button data-d="0" ${iv===0?'disabled':''}>×2</button>
@@ -1662,11 +1666,11 @@ function openVarPop(si, bi, x, y){
       btn.addEventListener('click', ()=>{
         const d = +btn.dataset.d;
         let newIvs;
-        if(d===0){ newIvs = base.ivs.map(v=>v===iv?v+12:v); }
-        else { newIvs = base.ivs.map(v=>v===iv?v+d:v); }
+        if(d===0){ newIvs = cur.ivs.map(v=>v===iv?v+12:v); }
+        else { newIvs = cur.ivs.map(v=>v===iv?v+d:v); }
         newIvs = [...new Set(newIvs)].sort((a,b)=>a-b);
         if(!newIvs.includes(0)) return;   // 根音必须保留（如把 ♭2 升成 3 与三音撞音等情况）
-        const newCh = {rootPc: base.rootPc, ivs: newIvs, label: names[base.rootPc] + variantSym(newIvs), color:'var(--c-lyd)', var:{orig: {...base}}};
+        const newCh = {rootPc: cur.rootPc, ivs: newIvs, label: names[cur.rootPc] + variantSym(newIvs), color:'var(--c-lyd)', var:{orig: {...orig}}};
         sections[si].bars[bi] = newCh;
         renderSections();
         refreshVarPopAfterChange(si, bi);
@@ -1943,6 +1947,7 @@ function playSong(){
           seqNote(m, t + r*step, step*0.9, 0.15, tone);
         }
       }
+      t = t0 + beatsPer*step;   // 电子音色也要推进时间轴，否则全曲小节叠在同一时刻
     } else {
       const pseq = buildPattern(tones, tone.replace('arp-',''), step);
       pseq.forEach(([m,beats,v])=>{
@@ -2064,6 +2069,8 @@ document.getElementById('importFile').addEventListener('change', ev=>{
   r.onload = ()=>{
     try{
       if(loadSongData(JSON.parse(r.result))){
+        // 与「恢复」一致：导入后写入草稿，刷新页面不会退回上一首
+        try{ localStorage.setItem(SAVE_KEY, JSON.stringify(serializeSong())); }catch(e){}
         const btn = document.getElementById('importSong');
         btn.textContent = '✓';
         setTimeout(()=>{ btn.innerHTML = ico('import'); }, 1200);
@@ -2679,8 +2686,9 @@ mcPlay.addEventListener('click', ()=>{
     playArp([], ()=>buildPattern(tones, patSel.value, (+tempo.value)/1000));
   }
 });
-mcAdd.addEventListener('click', ()=>{
-  if(!lastRecognized) return;
+/* 把当前识别和弦加入下一个空小节；返回写入的 {si, bi}（无内容返回 null） */
+function addRecognizedToSong(){
+  if(!lastRecognized) return null;
   // 找第一个有空位的段落，否则新加一段
   let target = null;
   for(const sec of sections){
@@ -2694,20 +2702,21 @@ mcAdd.addEventListener('click', ()=>{
   const rec = lastRecognized;
   target.sec.bars[target.bi] = {rootPc:rec.rootPc, ivs:rec.ivs, label:rec.label, color:rec.color};
   renderSections();
+  const si = sections.indexOf(target.sec), bi = target.bi;
   // 闪一下目标小节
-  const el = document.querySelector(`.barcell[data-si="${sections.indexOf(target.sec)}"][data-bi="${target.bi}"]`);
+  const el = document.querySelector(`.barcell[data-si="${si}"][data-bi="${bi}"]`);
   if(el){ el.classList.add('now'); setTimeout(()=>el.classList.remove('now'), 600); }
-});
+  return {si, bi};
+}
+mcAdd.addEventListener('click', ()=>{ addRecognizedToSong(); });
 mcGt.addEventListener('click', ()=>{
   if(!lastRecognized) return;
-  // 先加入下一空小节，再打开该格的指法弹窗
-  mcAdd.click();
-  const sec = sections.find(s=>s.bars.some(b=>b && b.label === lastRecognized.label));
-  if(!sec) return;
-  const si = sections.indexOf(sec);
-  const bi = sec.bars.findIndex(b=>b && b.label === lastRecognized.label);
-  const r = document.querySelector(`.barcell[data-si="${si}"][data-bi="${bi}"]`)?.getBoundingClientRect();
-  if(r) openGtPop(si, bi, r.left - 60, r.bottom + 6);
+  // 先加入下一空小节，再用精确位置打开该格指法
+  // （旧写法按 label 全局搜，歌里已有同和弦时会命中旧格、开错位置）
+  const at = addRecognizedToSong();
+  if(!at) return;
+  const r = document.querySelector(`.barcell[data-si="${at.si}"][data-bi="${at.bi}"]`)?.getBoundingClientRect();
+  if(r) openGtPop(at.si, at.bi, r.left - 60, r.bottom + 6);
 });
 
 /* 页面加载即初始化 MIDI（用户手势后才真正授权成功，无手势时静默失败） */
@@ -2757,9 +2766,14 @@ function songAutoName(){
 }
 function saveToLibrary(){
   const lib = getSongsLib();
-  const name = songAutoName();
+  const baseName = songAutoName();
   const song = serializeSong();
-  const i = lib.findIndex(s=>s.name === name);
+  // 覆盖判定改为「内容完全一致才算同一首」；同名但内容不同的自动加后缀另存，
+  // 避免两首不同歌（前4和弦相同）先后保存时后者静默覆盖前者。
+  const same = lib.find(s => JSON.stringify(s.song) === JSON.stringify(song));
+  let name = baseName, i = -1;
+  if(same){ i = lib.indexOf(same); }
+  else { let k = 2; while(lib.some(s => s.name === name)){ name = baseName + ' (' + k + ')'; k++; } }
   const entry = {id: i>=0 ? lib[i].id : (Date.now()+''), name, ts: Date.now(), song};
   if(i>=0) lib[i] = entry; else lib.push(entry);
   try{ localStorage.setItem(SONGS_KEY, JSON.stringify(lib)); }

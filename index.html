@@ -417,6 +417,7 @@
   .song-item{background:#1c2230; border:1px solid #2a3142; border-radius:9px; padding:9px 11px;}
   .song-meta{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; gap:8px;}
   .song-name{font-weight:700; color:#e6e9ef; font-size:13px;}
+  .song-tag{display:inline-block; margin-left:6px; padding:1px 6px; border-radius:5px; background:#1d4ed8; color:#fff; font-size:10px; font-weight:600; vertical-align:1px;}
   .song-ts{color:#8a92a3; font-size:11px; white-space:nowrap;}
   .song-acts{display:flex; gap:6px;}
   .song-acts button{font-size:12px; padding:3px 10px; border-radius:6px; border:1px solid #2a3142; background:#222a3a; color:#cdd3df; cursor:pointer;}
@@ -2748,7 +2749,61 @@ if(navigator.requestMIDIAccess){
 <script>
 /* ============ 我的歌曲库（多首命名保存 + 恢复） ============ */
 const SONGS_KEY = 'modal-interchange-songs';
+const PRESET_SEED_KEY = 'modal-interchange-presets-v1';
 function getSongsLib(){ try{ return JSON.parse(localStorage.getItem(SONGS_KEY)) || []; }catch(e){ return []; } }
+
+/* ---- 内置预制歌曲（写在 HTML 里，打开即入「我的歌曲」，无需导入） ---- */
+const _PCMAP = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
+const _FAMCOLOR = {min:'var(--c-min)', maj:'var(--c-maj)', dom:'var(--c-dom)', lyd:'var(--c-lyd)'};
+function _ch(root, ivs, label, fam){
+  return {rootPc:_PCMAP[root], ivs:ivs, label:label, color:_FAMCOLOR[fam], neg:null, gt:null, var:null};
+}
+const PRESET_SONGS = [
+  { id:'preset-em11-jazz', name:'Em11 爵士进行', ts:1758000000000, song:{
+    version:1, key:0, seventh:true, tone:'arp-up', seqDur:4, barsPerSec:4,
+    sections:[
+      {type:'A', bars:[
+        _ch('E',  [0,3,7,10,14,17], 'Em11',        'min'),
+        _ch('Eb', [0,4,7,10,18,21], 'Eb13(#11)',   'lyd'),
+        _ch('D',  [0,4,7,11,14,21], 'Dmaj13',      'maj'),
+        _ch('Db', [0,4,8,10,13],    'Db7(alt)',    'dom'),
+      ]},
+      {type:'B', bars:[
+        _ch('C',  [0,4,7,11,18,21], 'Cmaj13(#11)', 'lyd'),
+        _ch('F#', [0,4,7,10,15],    'F#7(#9)',     'dom'),
+        _ch('B',  [0,5,7,10,14,21], 'B13sus4',     'dom'),
+        _ch('B',  [0,4,8,10,15],    'B7(#9#5)',    'dom'),
+      ]},
+      {type:'C', bars:[
+        _ch('E',  [0,4,7,11,14],    'Emaj9',       'maj'),
+        _ch('G',  [0,3,7,10,14,17], 'Gm11',        'min'),
+        _ch('C',  [0,4,7,10,13,21], 'C13(b9)',     'dom'),
+        _ch('F',  [0,4,7,11,18],    'Fmaj7(#11)',  'lyd'),
+        _ch('B',  [0,4,7,10,20],    'B7(b13)',     'dom'),
+      ]},
+      {type:'D', bars:[
+        _ch('E',  [0,3,7,11,14],    'Em9(maj7)',   'min'),
+        _ch('E',  [0,3,7,11,14],    'Em9(maj7)',   'min'),
+      ]},
+    ],
+  }},
+];
+/* 首次打开时把预制歌曲播种进库；用 PRESET_SEED_KEY 记住已播种，
+   这样用户删掉预制歌后不会在下次打开时又被塞回来。 */
+function seedPresetSongs(){
+  try{
+    const stamp = PRESET_SONGS.map(p=>p.id).join(',');
+    if(localStorage.getItem(PRESET_SEED_KEY) === stamp) return;
+    const lib = getSongsLib();
+    let changed = false;
+    for(const p of PRESET_SONGS){
+      if(!lib.some(s=>s.id === p.id)){ lib.push({id:p.id, name:p.name, ts:p.ts, song:p.song, preset:true}); changed=true; }
+    }
+    if(changed) localStorage.setItem(SONGS_KEY, JSON.stringify(lib));
+    localStorage.setItem(PRESET_SEED_KEY, stamp);
+  }catch(e){}
+}
+
 function songAutoName(){
   const parts = [];
   for(const sec of sections){
@@ -2793,7 +2848,8 @@ function renderSongs(){
     div.className = 'song-item';
     const d = new Date(item.ts);
     const ts = (d.getMonth()+1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-    div.innerHTML = '<div class="song-meta"><span class="song-name">' + item.name + '</span><span class="song-ts">' + ts + '</span></div>';
+    const tag = item.preset ? '<span class="song-tag">预制</span>' : '';
+    div.innerHTML = '<div class="song-meta"><span class="song-name">' + item.name + tag + '</span><span class="song-ts">' + ts + '</span></div>';
     const acts = document.createElement('div'); acts.className = 'song-acts';
     const bLoad = document.createElement('button'); bLoad.className = 'song-load'; bLoad.textContent = '恢复';
     bLoad.addEventListener('click', ()=>{
@@ -2825,5 +2881,7 @@ document.getElementById('songsBtn').addEventListener('click', openSongsDrawer);
 document.getElementById('songsClose').addEventListener('click', closeSongsDrawer);
 document.getElementById('songsDrawer').addEventListener('click', e=>{ if(e.target.id === 'songsDrawer') closeSongsDrawer(); });
 document.getElementById('saveSong').addEventListener('click', saveToLibrary);
+/* 打开页面即把内置预制歌曲播种进「我的歌曲」 */
+seedPresetSongs();
 </script>
 </body></html>

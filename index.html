@@ -59,6 +59,12 @@
   .sec-meta{font-size:12px;color:#8a92a3;flex:1;}
   .sec-del{background:none;border:none;color:#8a92a3;cursor:pointer;font-size:15px;padding:2px 6px;border-radius:5px;}
   .sec-del:hover{color:#fb7185;background:rgba(251,113,133,.15);}
+  .sec-barbtn{
+    background:none;border:1px solid #2c3342;border-radius:6px;color:#8a92a3;
+    cursor:pointer;font-size:11px;font-weight:600;padding:2px 8px;
+    transition:border-color .12s, color .12s;
+  }
+  .sec-barbtn:hover{border-color:#38bdf8;color:#38bdf8;}
   .bars{display:flex;flex-wrap:wrap;gap:8px;}
   .barcell{
     width:calc(33.333% - 6px);min-height:108px;
@@ -446,23 +452,24 @@
         <button id="playSong" class="primary" data-page-node-id="eqd5pFIncJHEd43dsDsxqP">▶ 播放整曲</button>
         <button id="stopSeq" data-page-node-id="LfFdbmEbEDIagK18o5d99J">■</button>
         <button id="addSec" title="添加段落" data-page-node-id="bVAiKbqcFNlNlbV2TUqihO">＋段落</button>
+        <button id="clearSong" title="清空全部段落" data-page-node-id="jmYBN6wXVj11pgw0iXCEVd">清空</button>
+        <button id="saveSong" class="primary" title="保存到浏览器，下次打开自动恢复" data-page-node-id="mZUDifP3RlBJJkL7fm9loA">💾</button>
+        <button id="moreToggle" title="展开更多工具" data-page-node-id="moreToggle001">⚙</button>
       </div>
-      <div class="songbar" data-page-node-id="2G6FTN344KUnN76jD8mRpr">
-        <button id="demoSong" style="flex:1;" data-page-node-id="E8OviH9CCj1hEAC4OGP7DB">示例歌曲</button>
-        <button id="clearSong" style="flex:1;" data-page-node-id="jmYBN6wXVj11pgw0iXCEVd">清空</button>
+      <div id="moreArea" style="display:none;">
+        <div class="songbar">
+          <button id="sheetToggle" title="显示/隐藏谱面视图">📜 谱面</button>
+          <button id="exportAbc" title="导出 ABC 记谱 + ChordPro 和弦谱">🎵 ABC</button>
+          <button id="exportMidi" title="导出 MIDI 文件">🎹 MIDI</button>
+          <button id="printSheet" title="打印谱面">🖨</button>
+        </div>
+        <div class="songbar">
+          <button id="exportSong" title="导出为 JSON 文件">📤 导出 JSON</button>
+          <button id="importSong" title="从 JSON 文件导入">📥 导入 JSON</button>
+          <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+        </div>
       </div>
-      <div class="songbar" data-page-node-id="WG57gzinjcAMRdkEiuJWDB">
-        <button id="saveSong" class="primary" title="保存到浏览器，下次打开自动恢复" data-page-node-id="mZUDifP3RlBJJkL7fm9loA">💾 保存</button>
-        <button id="exportSong" title="导出为 JSON 文件" data-page-node-id="IQppLLDTWP535QhYiomRNm">📤</button>
-        <button id="importSong" title="从 JSON 文件导入" data-page-node-id="IbXmAIBzPYQPBD8rFn78rL">📥</button>
-        <input type="file" id="importFile" accept=".json,application/json" style="display:none;" data-page-node-id="yTl2g5w8w6KM7RFmq5spev">
-      </div>
-      <div class="songbar" data-page-node-id="qxtREO6pTjXxFPOGZMTewA">
-        <button id="sheetToggle" title="显示/隐藏谱面视图" data-page-node-id="BYZ1p7mwmgV0VCE1lDGRIu">📜 谱面</button>
-        <button id="exportAbc" title="导出 ABC 记谱 + ChordPro 和弦谱" data-page-node-id="Iu73P66NjCabp5YEJ8CVWD">🎵 ABC</button>
-        <button id="exportMidi" title="导出 MIDI 文件" data-page-node-id="7befrLBdE1NHvWxTGyxlBa">🎹 MIDI</button>
-        <button id="printSheet" title="打印谱面" data-page-node-id="HBeTN5CIC6rSLv2fe7RFrX">🖨</button>
-      </div>
+      <div id="moreArea2" style="display:none;">
       <div class="vrow" data-page-node-id="I6M2XIbEm307eFHQfS9G1J">
         <label data-page-node-id="bZToB2bBUWc5gG1R05ylyB">音色</label>
         <select id="toneSel" style="width:100%;" data-page-node-id="xiNvANxUXn50nRGoYgwoEd">
@@ -490,6 +497,7 @@
           </select>
         </label>
         <input type="range" id="seqDur" min="1" max="8" value="4" style="width:100%;" data-page-node-id="oPG7RTJe6AGjJ5zVAOMMLE">
+      </div>
       </div>
       <div class="sections" id="sections" data-page-node-id="Z0hPI0CBcPdSCHH4jcS6E3"><div class="section" data-si="0"><div class="sec-head"><input class="sec-name"><span class="sec-meta">1/4 小节</span><button class="sec-del" title="删除段落">🗑</button></div><div class="bars"><div class="barcell filled" data-si="0" data-bi="0" draggable="true" style="color: var(--c-half);"><span class="bn">1</span>Bø<button class="rm" title="清空此小节">✕</button><button class="gt" title="选择吉他指法">🎸</button><svg class="gdiag" width="66" height="62.699999999999996" viewBox="0 0 66 62.699999999999996" xmlns="http://www.w3.org/2000/svg"><line x1="9.900000000000002" y1="16.500000000000004" x2="56.099999999999994" y2="16.500000000000004" stroke="#e8ebf0" stroke-width="2.6"></line><line x1="9.900000000000002" y1="28.050000000000004" x2="56.099999999999994" y2="28.050000000000004" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="39.6" x2="56.099999999999994" y2="39.6" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="51.150000000000006" x2="56.099999999999994" y2="51.150000000000006" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="62.7" x2="56.099999999999994" y2="62.7" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="16.500000000000004" x2="9.900000000000002" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="19.14" y1="16.500000000000004" x2="19.14" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="28.38" y1="16.500000000000004" x2="28.38" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="37.62" y1="16.500000000000004" x2="37.62" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="46.86" y1="16.500000000000004" x2="46.86" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="56.099999999999994" y1="16.500000000000004" x2="56.099999999999994" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><text x="6.900000000000002" y="26.895000000000003" fill="#e8ebf0" font-size="5.1" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="600">1fr</text><circle cx="9.900000000000002" cy="22.275000000000002" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="19.14" cy="33.825" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="28.38" cy="45.375" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="37.62" cy="56.925" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="46.86" cy="45.375" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="56.099999999999994" cy="22.275000000000002" r="4.199999999999999" fill="#e8ebf0"></circle></svg></div><div class="barcell" data-si="0" data-bi="1"><span class="bn">2</span><span style="color:#3d434e">·</span></div><div class="barcell" data-si="0" data-bi="2"><span class="bn">3</span><span style="color:#3d434e">·</span></div><div class="barcell" data-si="0" data-bi="3"><span class="bn">4</span><span style="color:#3d434e">·</span></div></div></div></div>
       <div class="legend" id="legend" data-page-node-id="legendFix001"></div>
@@ -1710,10 +1718,16 @@ function renderSections(){
     meta.className = 'sec-meta';
     const filled = sec.bars.filter(Boolean).length;
     meta.textContent = filled + '/' + sec.bars.length + ' 小节';
+    const addBar = document.createElement('button');
+    addBar.className = 'sec-barbtn'; addBar.textContent = '＋小节'; addBar.title = '在此段落末尾加一小节';
+    addBar.addEventListener('click', ()=>{ sec.bars.push(null); renderSections(); });
+    const delBar = document.createElement('button');
+    delBar.className = 'sec-barbtn'; delBar.textContent = '－小节'; delBar.title = '删掉最后一小节';
+    delBar.addEventListener('click', ()=>{ if(sec.bars.length>1){ sec.bars.pop(); renderSections(); } });
     const del = document.createElement('button');
     del.className = 'sec-del'; del.textContent = '🗑'; del.title = '删除段落';
     del.addEventListener('click', ()=>{ sections.splice(si,1); renderSections(); });
-    head.appendChild(name); head.appendChild(meta); head.appendChild(del);
+    head.appendChild(name); head.appendChild(meta); head.appendChild(addBar); head.appendChild(delBar); head.appendChild(del);
     d.appendChild(head);
 
     const barsEl = document.createElement('div');
@@ -1911,16 +1925,12 @@ document.getElementById('playSong').addEventListener('click', playSong);
 document.getElementById('stopSeq').addEventListener('click', stopSong);
 document.getElementById('addSec').addEventListener('click', ()=>addSection());
 document.getElementById('clearSong').addEventListener('click', ()=>{ stopSong(); sections.length=0; renderSections(); });
-document.getElementById('demoSong').addEventListener('click', ()=>{
-  stopSong(); sections.length=0;
-  barsPerSecSel.value='4';
-  // Intro: 2 小节 Pad 感的和弦长音（C → Am）
-  sections.push({type:'Intro', bars:[snapChord(3,0), snapChord(3,5), null, null]});
-  // Verse: 4 小节 C Am F G
-  sections.push({type:'Verse', bars:[snapChord(3,0), snapChord(3,5), snapChord(3,3), snapChord(3,4)]});
-  // Chorus: 4 小节 F G C + 借 B♭7
-  sections.push({type:'Chorus', bars:[snapChord(3,3), snapChord(3,4), snapChord(3,0), snapChord(2,6)]});
-  renderSections();
+/* 更多工具折叠区 */
+document.getElementById('moreToggle').addEventListener('click', ()=>{
+  const open = document.getElementById('moreArea').style.display !== 'none';
+  document.getElementById('moreArea').style.display = open ? 'none' : '';
+  document.getElementById('moreArea2').style.display = open ? 'none' : '';
+  document.getElementById('moreToggle').textContent = open ? '⚙' : '✕';
 });
 barsPerSecSel.addEventListener('change', ()=>{
   // 调整所有段落的小节数（截断或补空）
@@ -1985,8 +1995,8 @@ document.getElementById('saveSong').addEventListener('click', ()=>{
   try{
     localStorage.setItem(SAVE_KEY, JSON.stringify(serializeSong()));
     const btn = document.getElementById('saveSong');
-    btn.textContent = '✓ 已保存';
-    setTimeout(()=>{ btn.textContent = '💾 保存'; }, 1200);
+    btn.textContent = '✓';
+    setTimeout(()=>{ btn.textContent = '💾'; }, 1200);
   }catch(e){ alert('保存失败：' + e.message); }
 });
 document.getElementById('exportSong').addEventListener('click', ()=>{

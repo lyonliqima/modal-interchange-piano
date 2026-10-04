@@ -2092,15 +2092,170 @@ try{
    作曲写谱：和声分析 + 谱面视图 + ABC/ChordPro/MIDI 导出
    ============================================================ */
 
-/* 和弦 → 调内罗马数字级数（在当前主调大音阶下找根音） */
-function romanOf(ch){
-  const key = +keySel.value;
-  const majorScale = [0,2,4,5,7,9,11];
-  const rel = ((ch.rootPc - key) % 12 + 12) % 12;
-  const degIdx = majorScale.indexOf(rel);
+/* ============================================================
+   调性智能识别：谱面不沿用左侧网格的 keySel，而是从歌曲和弦本身推断调
+   算法：Krumhansl 音级相关（主/小调 profile）+ 终止式与主/属/下属功能加权
+   ============================================================ */
+const MAJ_PROFILE = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+const MIN_PROFILE = [6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+/* 常见调式音阶（相对主音的半音偏移）——用于识别无明确主和弦的调式进行 */
+const MODE_SCALES = {
+  '自然小调':[0,2,3,5,7,8,10], '和声小调':[0,2,3,5,7,8,11], '多利亚':[0,2,3,5,7,9,10],
+  '弗里几亚':[0,1,3,5,7,8,10], '洛克利安':[0,1,3,5,6,8,10], '利底亚':[0,2,4,6,7,9,11],
+  '混合利底亚':[0,2,4,5,7,9,10], '利底亚增':[0,2,4,6,7,9,11],
+};
+
+/* 和弦在候选调 k 下的级数角色 */
+function chordRoleOf(ch, k){
+  const rel = ((ch.rootPc - k) % 12 + 12) % 12;
+  const ivs = [...new Set(ch.ivs.map(v => ((v % 12) + 12) % 12))].sort((a,b)=>a-b);
+  const has = v => ivs.includes(v);
+  let q = 'tri';
+  if(has(4)&&has(7)&&has(10)) q='dom7';
+  else if(has(3)&&has(7)&&has(10)) q='min7';
+  else if(has(4)&&has(7)&&has(11)) q='maj7';
+  else if(has(4)&&has(7)) q='maj';
+  else if(has(3)&&has(7)) q='min';
+  else if(has(3)&&has(6)) q='dim';
+  else if(has(4)&&has(8)) q='aug';
+  else if(has(10)||has(11)) q='oth7';
+  return {rel, q, rootRel: rel};
+}
+
+/* 从歌曲和弦推断调性。返回 {keyPc, mode, name, confident, modeScale} */
+/* 按歌曲自身的记谱习惯（升降号偏好）给音级命名，而不是沿用左侧网格的偏好 */
+function keyNameBySongSpell(k, modeSuffix, list){
+  const useFlat = (() => {
+    // 统计歌曲里出现的降号音级（Eb/Bb/Ab/Db/Gb）与升号音级（D#/F#/G#/A#/C#）
+    const FLAT_PC = [1,3,5,8,10], SHARP_PC=[1,3,6,8,10];
+    let fb=0, sh=0;
+    for(const c of list){
+      const lab = c.label || '';
+      if(/[b♭]/.test(lab)) fb++;
+      if(/#|♯/.test(lab)) sh++;
+    }
+    if(fb && !sh) return true;
+    if(sh && !fb) return false;
+    return FLAT_KEYS.has(k);   // 无明显倾向时按网格偏好兜底
+  })();
+  const names = useFlat ? FLAT : SHARP;
+  return names[k] + modeSuffix;
+}
+
+function detectSongKey(){
+  const list = [];
+  sections.forEach(sec => sec.bars.forEach(b => { if(b && !b.neg) list.push(b); }));
+  if(!list.length) return null;
+  const n = list.length;
+  // 音级直方图（首尾略加权重）
+  const hist = new Array(12).fill(0);
+  list.forEach((c, idx) => {
+    let w = 1;
+    if(idx === 0) w += 0.4;
+    if(idx === n-1) w += 0.6;
+    [...new Set(c.ivs.map(v => (c.rootPc + v) % 12))].forEach(p => { hist[p] += w; });
+  });
+
+  const cands = [];
+  for(let k = 0; k < 12; k++){
+    let cM = 0, cm = 0;
+    for(let i = 0; i < 12; i++){
+      cM += hist[(k+i)%12] * MAJ_PROFILE[i];
+      cm += hist[(k+i)%12] * MIN_PROFILE[i];
+    }
+    // 主和弦证据
+    let tonicMaj = false, tonicMin = false, tonicN = 0, domN = 0, subN = 0;
+    let tonicAtStart = false, tonicAtEnd = false;
+    for(let i = 0; i < list.length; i++){
+      const c = list[i];
+      const r = chordRoleOf(c, k);
+      if(r.rel === 0){
+        tonicN++;
+        if(r.q==='maj'||r.q==='maj7') tonicMaj = true;
+        if(r.q==='min'||r.q==='min7') tonicMin = true;
+        if(i === 0) tonicAtStart = true;
+        if(i === n-1) tonicAtEnd = true;
+      }
+      if(r.rel === 7 && r.q === 'dom7') domN++;
+      if(r.rel === 5 && (r.q==='maj'||r.q==='maj7')) subN++;
+    }
+    // 终止式
+    const fr = chordRoleOf(list[0], k), lr = chordRoleOf(list[n-1], k);
+    let cad = 0;
+    if(lr.rel === 0) cad += (lr.q==='min'||lr.q==='min7') ? 5 : 6;
+    else if(lr.rel === 7 && lr.q === 'dom7') cad += 3;   // 半终止
+    else if(lr.rel === 5 && (lr.q==='maj'||lr.q==='maj7')) cad += 1.5;
+    if(fr.rel === 0) cad += 2;
+    const func = cad + tonicN*2 + domN*1.5 + subN*0.6;
+    const sM = cM + cm*0.3 + func*2;
+    const sm = cm + cM*0.3 + func*2;
+    const mode = (tonicMin && !tonicMaj) ? 'minor' : (tonicMaj && !tonicMin ? 'major' : (sm > sM ? 'minor' : 'major'));
+    // 音阶贴合度：有多少和弦的音全部落在该调音阶内（区分「真调」与「碰巧有主三和弦」）
+    const scSet = new Set((mode==='minor' ? MODE_SCALES['自然小调'] : [0,2,4,5,7,9,11]).map(v => (k+v)%12));
+    let fit = 0;
+    for(const c of list){
+      if([...new Set(c.ivs.map(v => (c.rootPc+v)%12))].every(p => scSet.has(p))) fit++;
+    }
+    const fitRatio = fit / n;
+    // 片段很短时（≤4 个和弦）容易「碰巧」撞上别的主三和弦，
+    // 因此要求主和弦出现在首或尾（真正的主调进行通常有一端锚定），否则大幅降权。
+    const anchored = tonicAtStart || tonicAtEnd;
+    const anchorPenalty = (n <= 4 && !anchored) ? 26 : 0;
+    cands.push({ k, score: Math.max(sM, sm) + fitRatio*18 - anchorPenalty, mode,
+                 hasTonic: tonicMaj || tonicMin, tonicN, cM, cm, func, fitRatio, anchored });
+  }
+
+  // 无主和弦 → 尝试按调式识别（I-bVII-bVI / i-VI-III-VII 等）
+  const tonal = cands.filter(c => c.hasTonic);
+  if(!tonal.length){
+    let bestMode = null;
+    for(const c of cands){
+      for(const [mname, sc] of Object.entries(MODE_SCALES)){
+        const set = new Set(sc.map(v => (c.k + v) % 12));
+        const hit = list.filter(ch => [...new Set(ch.ivs.map(v => (ch.rootPc+v)%12))].every(p => set.has(p))).length;
+        const ratio = hit / n;
+        if(!bestMode || ratio > bestMode.ratio) bestMode = { k:c.k, ratio, mname, sc };
+      }
+    }
+    if(bestMode && bestMode.ratio >= 0.6){
+      const name = keyNameBySongSpell(bestMode.k, ' ' + bestMode.mname, list);
+      return { keyPc: bestMode.k, mode: 'mode', modeName: bestMode.mname, name,
+               confident: bestMode.ratio >= 0.85, scale: bestMode.sc };
+    }
+    // 连调式都不像 → 回落到第一根音
+    const nm = keyNameBySongSpell(list[0].rootPc, ' ?', list);
+    return { keyPc: list[0].rootPc, mode: 'unknown', name: nm, confident: false, scale:[0,2,4,5,7,9,11] };
+  }
+
+  tonal.sort((a,b) => b.score - a.score);
+  const best = tonal[0];
+  const nm = keyNameBySongSpell(best.k, best.mode === 'minor' ? 'm' : '', list);
+  const scale = best.mode === 'minor' ? MODE_SCALES['自然小调'] : [0,2,4,5,7,9,11];
+  // 置信度：与第二名的差距
+  const margin = tonal[1] ? (best.score - tonal[1].score) / Math.max(best.score, 1) : 1;
+  return { keyPc: best.k, mode: best.mode, name: nm, scale,
+           confident: margin > 0.06 && best.tonicN > 0, modeName: null };
+}
+
+/* 谱面用调（优先智能识别；识别不出才回落左侧网格的 keySel） */
+let sheetKeyCache = null;
+function currentSheetKey(){
+  if(sheetKeyCache) return sheetKeyCache;
+  const d = detectSongKey();
+  sheetKeyCache = d || { keyPc:+keySel.value, mode:'major', name: keySel.options[keySel.selectedIndex].textContent,
+                         scale:[0,2,4,5,7,9,11], confident:false, fallback:true };
+  return sheetKeyCache;
+}
+
+/* 和弦 → 调内罗马数字级数（按谱面推断出的调，而非左侧网格调） */
+function romanOf(ch, keyPc, scale){
+  const k = (keyPc === undefined) ? currentSheetKey().keyPc : keyPc;
+  const sc = scale || (keyPc === undefined ? currentSheetKey().scale : [0,2,4,5,7,9,11]);
+  const rel = ((ch.rootPc - k) % 12 + 12) % 12;
+  const degIdx = sc.indexOf(rel);
   if(degIdx === -1) return null;
   const RN = ['I','II','III','IV','V','VI','VII'];
-  let rom = RN[degIdx];
+  let rom = RN[Math.min(degIdx, 6)];
   // 用三音/七音判断大小写
   const third = ch.ivs.find(v=>v===3||v===4);
   const isMinorish = third === 3;
@@ -2112,14 +2267,14 @@ function romanOf(ch){
   else if(sev===9) rom += '6';
   else if(ch.ivs.includes(6)) rom += 'ø';
   // 减/增
-  if(ch.ivs.includes(3) && ch.ivs.includes(6) && !ch.ivs.includes(7)) rom = 'vii°'.replace('vii', RN[degIdx].toLowerCase());
+  if(ch.ivs.includes(3) && ch.ivs.includes(6) && !ch.ivs.includes(7)) rom = RN[Math.min(degIdx,6)].toLowerCase()+'°';
   if(ch.ivs.includes(8)) rom += '+';
   return rom;
 }
 
-/* 和弦功能：T 主功能 / S 下属 / D 属 / N 其他色彩 */
-function funcOf(ch){
-  const key = +keySel.value;
+/* 和弦功能：T 主功能 / S 下属 / D 属 / N 其他色彩（按谱面推断的调） */
+function funcOf(ch, keyPc){
+  const key = (keyPc === undefined) ? currentSheetKey().keyPc : keyPc;
   const rel = ((ch.rootPc - key) % 12 + 12) % 12;
   const ivs = ch.ivs.map(v=>v%12).sort((a,b)=>a-b);
   const has = pc => ivs.includes(pc);
@@ -2130,9 +2285,9 @@ function funcOf(ch){
   return 'N';
 }
 
-/* 借用来源：和弦出现在哪个调式行（同主音交换的出处） */
-function borrowOf(ch){
-  const key = +keySel.value;
+/* 借用来源：和弦出现在哪个调式行（同主音交换的出处），以谱面推断的调为基准 */
+function borrowOf(ch, keyPc){
+  const key = (keyPc === undefined) ? currentSheetKey().keyPc : keyPc;
   const pcs = new Set(ch.ivs.map(v => (ch.rootPc + v) % 12));
   const hits = [];
   ROWS.forEach(row=>{
@@ -2165,11 +2320,13 @@ const sheetBody = document.getElementById('sheetBody');
 const FN_NAME = {T:'主', S:'下属', D:'属', N:'色'};
 
 function renderSheet(){
-  const keyName = keySel.options[keySel.selectedIndex].textContent;
+  const K = currentSheetKey();
+  const keyName = K.name;
+  const detNote = K.confident === false ? '（识别置信度低，可点「谱面」旁的调名切换）' : '';
   document.getElementById('sheetTitle').textContent =
     `${keyName} 调 · ${sections.map(s=>s.type).filter(Boolean).join(' - ') || '未命名'}`;
   document.getElementById('sheetSub').textContent =
-    `每和弦 ${seqDur.value} 拍 ｜ 每段 ${barsPerSecSel.value} 小节 ｜ 级数按 ${keyName} 自然大调标记 ｜ T=主功能 S=下属 D=属 N=色彩 ｜ ⇄=负和声`;
+    `每和弦 ${seqDur.value} 拍 ｜ 每段 ${barsPerSecSel.value} 小节 ｜ 调性智能识别：${keyName}${detNote} ｜ 级数按 ${keyName} 标记 ｜ T=主功能 S=下属 D=属 N=色彩 ｜ ⇄=负和声`;
   sheetBody.innerHTML = '';
   let prevCh = null;
   sections.forEach((sec, si)=>{
@@ -2191,9 +2348,9 @@ function renderSheet(){
         return;
       }
       bar.className = 'sheet-bar';
-      const rom = romanOf(ch);
-      const fn = ch.neg ? 'N' : (funcOf(ch) || 'N');
-      const borrows = borrowOf(ch);
+      const rom = romanOf(ch, K.keyPc, K.scale);
+      const fn = ch.neg ? 'N' : (funcOf(ch, K.keyPc) || 'N');
+      const borrows = borrowOf(ch, K.keyPc);
       const cad = cadenceOf(prevCh, ch);
       let tag = '';
       if(ch.neg){
@@ -2219,16 +2376,21 @@ function renderSheet(){
 document.getElementById('sheetToggle').addEventListener('click', ()=>{
   const show = !sheetEl.classList.contains('show');
   sheetEl.classList.toggle('show', show);
-  if(show) renderSheet();
+  if(show){ sheetKeyCache = null; renderSheet(); }   // 打开时重新识别调性
 });
 document.getElementById('printSheet').addEventListener('click', ()=>{
+  sheetKeyCache = null;
   renderSheet();
   sheetEl.classList.add('show');
   window.print();
 });
-/* 数据变化时同步刷新谱面 */
+/* 数据变化时同步刷新谱面（并让调性缓存失效，下次打开/打印重新识别） */
 const _origRenderSections = renderSections;
-renderSections = function(){ _origRenderSections(); if(sheetEl.classList.contains('show')) renderSheet(); };
+renderSections = function(){
+  sheetKeyCache = null;
+  _origRenderSections();
+  if(sheetEl.classList.contains('show')) renderSheet();
+};
 
 /* ---- ABC 记谱导出 ---- */
 function abcNoteName(midi){
@@ -2242,9 +2404,9 @@ function abcNoteName(midi){
   return n;
 }
 function buildAbc(){
-  const keyName = keySel.options[keySel.selectedIndex].textContent;
+  const keyName = currentSheetKey().name;   // 用智能识别的调，而非左侧网格调
   const keyMap = {C:'C', 'C♯':'C#', 'D♭':'Db', D:'D', 'E♭':'Eb', E:'E', F:'F',
-                  'F♯':'F#', 'G♭':'Gb', G:'G', 'A♭':'Ab', A:'A', 'B♭':'Bb', B:'B'};
+                  'F♯':'F#', 'G♭':'Gb', G:'G', 'A♭':'Ab', A:'A', 'B♭':'Bb', B:'B', Am:'Am', Em:'Em', Dm:'Dm', Bm:'Bm', Fm:'Fm', Cm:'Cm', Gm:'Gm'};
   const L = 1/4;                             // 每音符一个四分音符
   const durMap = {1:'/2', 2:'', 3:'3/2', 4:'2', 5:'', 6:'3', 7:'', 8:'4'};
   const beats = +seqDur.value;
@@ -2265,16 +2427,17 @@ function buildAbc(){
   return out;
 }
 function buildChordPro(){
-  const keyName = keySel.options[keySel.selectedIndex].textContent;
+  const K = currentSheetKey();
+  const keyName = K.name;                     // 用智能识别的调
   let out = `{title: ${keyName} 调 · 和弦进行}\n{key: ${keyName}}\n{tempo: ${Math.round(+tempo.value)}}\n\n`;
   sections.forEach(sec=>{
     out += `## ${sec.type}\n`;
     const line1 = sec.bars.map(ch => ch ? ch.label : '%').join(' | ');
     const line2 = sec.bars.map(ch => {
       if(!ch) return ' ';
-      const rom = romanOf(ch);
+      const rom = romanOf(ch, K.keyPc, K.scale);
       if(ch.neg) return rom ? `${rom} ⇄` : '⇄';
-      const fn = funcOf(ch);
+      const fn = funcOf(ch, K.keyPc);
       return rom ? `${rom}(${fn})` : (fn || '?');
     }).join(' | ');
     out += line1 + '\n' + line2 + '\n\n';

@@ -128,6 +128,12 @@
   .var-pop h3{font-size:14px;color:#fff;margin-bottom:2px;}
   .var-pop .hint{font-size:11.5px;color:#8a92a3;margin-bottom:10px;line-height:1.5;}
   .var-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
+  .var-groups{max-height:300px;overflow-y:auto;border-top:1px solid #232a38;padding-top:8px;margin-bottom:8px;scrollbar-width:thin;scrollbar-color:#2c3342 transparent;}
+  .var-groups::-webkit-scrollbar{width:6px;}
+  .var-groups::-webkit-scrollbar-thumb{background:#2c3342;border-radius:3px;}
+  .var-cat{font-size:10.5px;color:#565b64;margin:7px 0 4px;font-weight:700;letter-spacing:.5px;}
+  .var-cat:first-child{margin-top:0;}
+  .var-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
   .var-preset{
     background:#161b26;border:2px solid #2c3342;border-radius:8px;padding:6px 2px;
     cursor:pointer;text-align:center;color:#c3c9d4;font-size:11px;font-weight:600;
@@ -539,8 +545,9 @@
 
 <div class="var-pop" id="varPop">
   <h3 id="varTitle">和弦变体</h3>
-  <div class="hint">上半：常用变体一键替换。下半：单独升降某个和弦音（×2 = 该音升八度）。整和弦移调用底部按钮。</div>
+  <div class="hint">上半：针对当前和弦的智能变体。下半：全部和弦性质（来自 buitar 体系，点即套用，同根音直接换性质）。</div>
   <div class="var-presets" id="varPresets"></div>
+  <div class="var-groups" id="varGroups"></div>
   <div class="var-notes" id="varNotes"></div>
   <div class="foot">
     <button id="varCancel">取消</button>
@@ -1450,6 +1457,110 @@ function variantSym(ivs){
   return '(' + set.map(v=>IV_LABEL[v]||v).join(' ') + ')';
 }
 
+/* ============================================================
+   和弦性质全表（移植自 buitar config-chord.ts 的 chordMap）
+   半音表 = constitute 度数标记换算（b=降半音, #=升半音）；
+   同根音任意切换性质，点击即套用。
+   ============================================================ */
+const QUALITY_MAP = [
+  /* --- 三和弦 --- */
+  {cat:'三和弦', tag:'',        ivs:[0,4,7]},
+  {cat:'三和弦', tag:'m',       ivs:[0,3,7]},
+  {cat:'三和弦', tag:'aug',     ivs:[0,4,8]},
+  {cat:'三和弦', tag:'dim',     ivs:[0,3,6]},
+  {cat:'三和弦', tag:'sus2',    ivs:[0,2,7]},
+  {cat:'三和弦', tag:'sus4',    ivs:[0,5,7]},
+  /* --- 三和弦拓展 --- */
+  {cat:'三和弦拓展', tag:'add9',       ivs:[0,4,7,14]},
+  {cat:'三和弦拓展', tag:'m(add9)',    ivs:[0,3,7,14]},
+  {cat:'三和弦拓展', tag:'aug(add9)',  ivs:[0,4,8,14]},
+  {cat:'三和弦拓展', tag:'dim(add9)',  ivs:[0,3,6,14]},
+  {cat:'三和弦拓展', tag:'add11',      ivs:[0,4,7,17]},
+  {cat:'三和弦拓展', tag:'m(add11)',   ivs:[0,3,7,17]},
+  /* --- 七和弦 --- */
+  {cat:'七和弦', tag:'Δ',       ivs:[0,4,7,11]},
+  {cat:'七和弦', tag:'7',       ivs:[0,4,7,10]},
+  {cat:'七和弦', tag:'m7',      ivs:[0,3,7,10]},
+  {cat:'七和弦', tag:'ø',       ivs:[0,3,6,10]},
+  {cat:'七和弦', tag:'°7',      ivs:[0,3,6,9]},
+  {cat:'七和弦', tag:'mΔ',      ivs:[0,3,7,11]},
+  {cat:'七和弦', tag:'Δ♯5',     ivs:[0,4,8,11]},
+  {cat:'七和弦', tag:'7♯5',     ivs:[0,4,8,10]},
+  {cat:'七和弦', tag:'7sus4',   ivs:[0,5,7,10]},
+  {cat:'七和弦', tag:'6',       ivs:[0,4,7,9]},
+  {cat:'七和弦', tag:'m6',      ivs:[0,3,7,9]},
+  {cat:'七和弦', tag:'m(b6)',   ivs:[0,3,7,8]},
+  /* --- 七和弦拓展 --- */
+  {cat:'七和弦拓展', tag:'7♭9',      ivs:[0,4,7,10,13]},
+  {cat:'七和弦拓展', tag:'7♯9',      ivs:[0,4,7,10,15]},
+  {cat:'七和弦拓展', tag:'7♭9♭5',    ivs:[0,4,6,10,13]},
+  {cat:'七和弦拓展', tag:'7♭9♯5',    ivs:[0,4,8,10,13]},
+  {cat:'七和弦拓展', tag:'7♯9♭5',    ivs:[0,4,6,10,15]},
+  {cat:'七和弦拓展', tag:'7♯9♯5',    ivs:[0,4,8,10,15]},
+  {cat:'七和弦拓展', tag:'7♯11',     ivs:[0,4,7,10,18]},
+  {cat:'七和弦拓展', tag:'7♭13',     ivs:[0,4,7,10,20]},
+  {cat:'七和弦拓展', tag:'Δ♭9',      ivs:[0,4,7,11,13]},
+  {cat:'七和弦拓展', tag:'Δ♯9',      ivs:[0,4,7,11,15]},
+  {cat:'七和弦拓展', tag:'m7♭9',     ivs:[0,3,7,10,13]},
+  {cat:'七和弦拓展', tag:'m7♭9♭5',   ivs:[0,3,6,10,13]},
+  /* --- 九和弦 --- */
+  {cat:'九和弦', tag:'Δ9',      ivs:[0,4,7,11,14]},
+  {cat:'九和弦', tag:'9',       ivs:[0,4,7,10,14]},
+  {cat:'九和弦', tag:'m9',      ivs:[0,3,7,10,14]},
+  {cat:'九和弦', tag:'ø9',      ivs:[0,3,6,10,14]},
+  {cat:'九和弦', tag:'°9',      ivs:[0,3,6,9,14]},
+  {cat:'九和弦', tag:'9♭5',     ivs:[0,4,6,10,14]},
+  {cat:'九和弦', tag:'mΔ9',     ivs:[0,3,7,11,14]},
+  {cat:'九和弦', tag:'Δ9♯5',    ivs:[0,4,8,11,14]},
+  {cat:'九和弦', tag:'9♯5',     ivs:[0,4,8,10,14]},
+  {cat:'九和弦', tag:'9sus4',   ivs:[0,5,7,10,14]},
+  {cat:'九和弦', tag:'69',      ivs:[0,4,7,9,14]},
+  {cat:'九和弦', tag:'m69',     ivs:[0,3,7,9,14]},
+  /* --- 十一/十三和弦 --- */
+  {cat:'十一和弦', tag:'Δ♯11',  ivs:[0,4,7,11,14,18]},
+  {cat:'十一和弦', tag:'11',    ivs:[0,4,7,10,14,17]},
+  {cat:'十一和弦', tag:'m11',   ivs:[0,3,7,10,14,17]},
+  {cat:'十三和弦', tag:'Δ13',   ivs:[0,4,7,11,14,18,21]},
+  {cat:'十三和弦', tag:'13',    ivs:[0,4,7,10,14,17,21]},
+  {cat:'十三和弦', tag:'m13',   ivs:[0,3,7,10,14,17,21]},
+];
+
+/* 渲染性质全表分组列表：同根音直接换性质 */
+function renderVarGroups(si, bi, base){
+  const groupsEl = document.getElementById('varGroups');
+  const names = keyNames();
+  groupsEl.innerHTML = '';
+  let lastCat = null;
+  QUALITY_MAP.forEach(q=>{
+    if(q.cat !== lastCat){
+      lastCat = q.cat;
+      const h = document.createElement('div');
+      h.className = 'var-cat';
+      h.textContent = q.cat;
+      groupsEl.appendChild(h);
+      const grid = document.createElement('div');
+      grid.className = 'var-grid';
+      grid.dataset.cat = q.cat;
+      groupsEl.appendChild(grid);
+    }
+    const grid = groupsEl.querySelector(`.var-grid[data-cat="${q.cat}"]`);
+    const b = document.createElement('button');
+    b.className = 'var-preset';
+    const cur = (base.ivs.map(v=>((v%12)+12)%12).sort((a,b)=>a-b).join(',') === q.ivs.map(v=>((v%12)+12)%12).sort((a,c)=>a-c).join(','));
+    if(cur) b.style.borderColor = '#38bdf8';
+    b.innerHTML = `<div style="font-weight:700;">${q.tag||'maj'}</div>`;
+    b.title = names[base.rootPc] + (q.tag||'');
+    b.addEventListener('click', ()=>{
+      const newCh = {rootPc: base.rootPc, ivs: q.ivs, label: names[base.rootPc] + (q.tag||''), color:'var(--c-lyd)', var:{orig: {...base}}};
+      sections[si].bars[bi] = newCh;
+      renderSections();
+      refreshVarPopAfterChange(si, bi);
+      playChordData(newCh, document.querySelector(`.barcell[data-si="${si}"][data-bi="${bi}"]`));
+    });
+    grid.appendChild(b);
+  });
+}
+
 function openVarPop(si, bi, x, y){
   varTarget = {si, bi};
   const ch = sections[si].bars[bi];
@@ -1473,6 +1584,8 @@ function openVarPop(si, bi, x, y){
     });
     varPresetsEl.appendChild(b);
   });
+  /* --- 性质全表区 --- */
+  renderVarGroups(si, bi, base);
   /* --- 逐音区 --- */
   varNotesEl.innerHTML = '';
   const tones = [...new Set(base.ivs)].sort((a,b)=>a-b);

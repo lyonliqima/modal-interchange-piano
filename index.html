@@ -18,6 +18,7 @@
     --label:#8a8f98;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
+  .ico{width:1.05em;height:1.05em;display:inline-block;vertical-align:middle;flex:0 0 auto;}
   body{
     background:var(--bg);
     color:#d7dae0;
@@ -426,7 +427,25 @@
   .songs-foot{margin-top:10px; font-size:11px; color:#6b7280; text-align:center;}
 </style>
 <style id="__dm_bindable_badge_style__">[data-sp-bindable="database"]{outline:1px dashed #0088ff;outline-offset:2px;border-radius:4px;}[data-sp-bindable="database"] *{pointer-events:none !important;transition:none !important;animation:none !important;}[data-sp-bindable="database"]{transition:none !important;animation:none !important;}</style></head>
-<body data-page-node-id="M6NCGRXpITjmMkGJHFRh5G" style="">
+<body data-page-node-id="M6NCGRXpITjmMkGJHFRh5G" style=""><svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <symbol id="ic-play" viewBox="0 0 24 24"><polygon points="7,5 19,12 7,19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="ic-minus" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.4v3.1M12 18.5v3.1M2.4 12h3.1M18.5 12h3.1M5.2 5.2l2.2 2.2M16.6 16.6l2.2 2.2M18.8 5.2l-2.2 2.2M7.4 16.6l-2.2 2.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="ic-save" viewBox="0 0 24 24"><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 4v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="8" y="13" width="8" height="6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="ic-music" viewBox="0 0 24 24"><path d="M9 17V5l10-2v12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><circle cx="6.6" cy="17.4" r="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.6" cy="15.4" r="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="ic-keyboard" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 6v7M11 6v7M15 6v7M19 6v7" stroke="currentColor" stroke-width="1.2"/><path d="M5 6v4M9 6v4M13 6v4M17 6v4" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="ic-export" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-import" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M5 7h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6.5 7l.9 12.2a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="ic-guitar" viewBox="0 0 24 24"><circle cx="8.6" cy="15.4" r="4.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.6" cy="15.4" r="1.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 12l8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M16.5 3.5h5v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="ic-print" viewBox="0 0 24 24"><path d="M7 8V4h10v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="4" y="8" width="16" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="7" y="13" width="10" height="7" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</defs></svg>
+<script>function ico(n){return '<svg class="ico" aria-hidden="true"><use href="#ic-'+n+'"></use></svg>';}</script>
 <div class="wrap" data-page-node-id="zvMBZN5jL9edUW0siuzk8E">
   
   
@@ -474,28 +493,28 @@
     </div>
 
     <div class="panel" id="panel" data-page-node-id="uUrJFBCyZy6VYePqRweIcd">
-      <h2 data-page-node-id="yoDgxqTwfncOE65CZY4hAn">🎼 歌曲编辑器</h2>
+      <h2 data-page-node-id="yoDgxqTwfncOE65CZY4hAn"><svg class="ico" aria-hidden="true"><use href="#ic-music"></use></svg> 歌曲编辑器</h2>
       <div class="phint" data-page-node-id="U1Rn9p0W4AGA4N1OB0Dgmu">拖和弦进段落的小节格子里，按段落顺序播放整首歌</div>
 
       <div class="songbar" data-page-node-id="IMMXqwCXW7o8TSQm1ZJXju">
-        <button id="playSong" class="primary" data-page-node-id="eqd5pFIncJHEd43dsDsxqP">▶ 播放整曲</button>
-        <button id="stopSeq" data-page-node-id="LfFdbmEbEDIagK18o5d99J">■</button>
-        <button id="addSec" title="添加段落" data-page-node-id="bVAiKbqcFNlNlbV2TUqihO">＋段落</button>
+        <button id="playSong" class="primary" data-page-node-id="eqd5pFIncJHEd43dsDsxqP"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg> 播放整曲</button>
+        <button id="stopSeq" data-page-node-id="LfFdbmEbEDIagK18o5d99J"><svg class="ico" aria-hidden="true"><use href="#ic-stop"></use></svg></button>
+        <button id="addSec" title="添加段落" data-page-node-id="bVAiKbqcFNlNlbV2TUqihO"><svg class="ico" aria-hidden="true"><use href="#ic-plus"></use></svg>段落</button>
         <button id="clearSong" title="清空全部段落" data-page-node-id="jmYBN6wXVj11pgw0iXCEVd">清空</button>
-        <button id="saveSong" class="primary" title="存入「我的歌曲」库（可存多首）" data-page-node-id="mZUDifP3RlBJJkL7fm9loA">💾</button>
-        <button id="songsBtn" title="我的歌曲：恢复以前保存的歌" data-page-node-id="songsBtn001">🎵 我的歌曲</button>
-        <button id="moreToggle" title="展开更多工具" data-page-node-id="moreToggle001">⚙</button>
+        <button id="saveSong" class="primary" title="存入「我的歌曲」库（可存多首）" data-page-node-id="mZUDifP3RlBJJkL7fm9loA"><svg class="ico" aria-hidden="true"><use href="#ic-save"></use></svg></button>
+        <button id="songsBtn" title="我的歌曲：恢复以前保存的歌" data-page-node-id="songsBtn001"><svg class="ico" aria-hidden="true"><use href="#ic-music"></use></svg> 我的歌曲</button>
+        <button id="moreToggle" title="展开更多工具" data-page-node-id="moreToggle001"><svg class="ico" aria-hidden="true"><use href="#ic-gear"></use></svg></button>
       </div>
       <div id="moreArea" style="display:none;">
         <div class="songbar">
-          <button id="sheetToggle" title="显示/隐藏谱面视图">📜 谱面</button>
-          <button id="exportAbc" title="导出 ABC 记谱 + ChordPro 和弦谱">🎵 ABC</button>
-          <button id="exportMidi" title="导出 MIDI 文件">🎹 MIDI</button>
-          <button id="printSheet" title="打印谱面">🖨</button>
+          <button id="sheetToggle" title="显示/隐藏谱面视图"><svg class="ico" aria-hidden="true"><use href="#ic-doc"></use></svg> 谱面</button>
+          <button id="exportAbc" title="导出 ABC 记谱 + ChordPro 和弦谱"><svg class="ico" aria-hidden="true"><use href="#ic-music"></use></svg> ABC</button>
+          <button id="exportMidi" title="导出 MIDI 文件"><svg class="ico" aria-hidden="true"><use href="#ic-keyboard"></use></svg> MIDI</button>
+          <button id="printSheet" title="打印谱面"><svg class="ico" aria-hidden="true"><use href="#ic-print"></use></svg></button>
         </div>
         <div class="songbar">
-          <button id="exportSong" title="导出为 JSON 文件">📤 导出 JSON</button>
-          <button id="importSong" title="从 JSON 文件导入">📥 导入 JSON</button>
+          <button id="exportSong" title="导出为 JSON 文件"><svg class="ico" aria-hidden="true"><use href="#ic-export"></use></svg> 导出 JSON</button>
+          <button id="importSong" title="从 JSON 文件导入"><svg class="ico" aria-hidden="true"><use href="#ic-import"></use></svg> 导入 JSON</button>
           <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
         </div>
       </div>
@@ -529,7 +548,7 @@
         <input type="range" id="seqDur" min="1" max="8" value="4" style="width:100%;" data-page-node-id="oPG7RTJe6AGjJ5zVAOMMLE">
       </div>
       </div>
-      <div class="sections" id="sections" data-page-node-id="Z0hPI0CBcPdSCHH4jcS6E3"><div class="section" data-si="0"><div class="sec-head"><input class="sec-name"><span class="sec-meta">1/4 小节</span><button class="sec-del" title="删除段落">🗑</button></div><div class="bars"><div class="barcell filled" data-si="0" data-bi="0" draggable="true" style="color: var(--c-half);"><span class="bn">1</span>Bø<button class="rm" title="清空此小节">✕</button><button class="gt" title="选择吉他指法">🎸</button><svg class="gdiag" width="66" height="62.699999999999996" viewBox="0 0 66 62.699999999999996" xmlns="http://www.w3.org/2000/svg"><line x1="9.900000000000002" y1="16.500000000000004" x2="56.099999999999994" y2="16.500000000000004" stroke="#e8ebf0" stroke-width="2.6"></line><line x1="9.900000000000002" y1="28.050000000000004" x2="56.099999999999994" y2="28.050000000000004" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="39.6" x2="56.099999999999994" y2="39.6" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="51.150000000000006" x2="56.099999999999994" y2="51.150000000000006" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="62.7" x2="56.099999999999994" y2="62.7" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="16.500000000000004" x2="9.900000000000002" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="19.14" y1="16.500000000000004" x2="19.14" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="28.38" y1="16.500000000000004" x2="28.38" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="37.62" y1="16.500000000000004" x2="37.62" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="46.86" y1="16.500000000000004" x2="46.86" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="56.099999999999994" y1="16.500000000000004" x2="56.099999999999994" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><text x="6.900000000000002" y="26.895000000000003" fill="#e8ebf0" font-size="5.1" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="600">1fr</text><circle cx="9.900000000000002" cy="22.275000000000002" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="19.14" cy="33.825" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="28.38" cy="45.375" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="37.62" cy="56.925" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="46.86" cy="45.375" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="56.099999999999994" cy="22.275000000000002" r="4.199999999999999" fill="#e8ebf0"></circle></svg></div><div class="barcell" data-si="0" data-bi="1"><span class="bn">2</span><span style="color:#3d434e">·</span></div><div class="barcell" data-si="0" data-bi="2"><span class="bn">3</span><span style="color:#3d434e">·</span></div><div class="barcell" data-si="0" data-bi="3"><span class="bn">4</span><span style="color:#3d434e">·</span></div></div></div></div>
+      <div class="sections" id="sections" data-page-node-id="Z0hPI0CBcPdSCHH4jcS6E3"><div class="section" data-si="0"><div class="sec-head"><input class="sec-name"><span class="sec-meta">1/4 小节</span><button class="sec-del" title="删除段落"><svg class="ico" aria-hidden="true"><use href="#ic-trash"></use></svg></button></div><div class="bars"><div class="barcell filled" data-si="0" data-bi="0" draggable="true" style="color: var(--c-half);"><span class="bn">1</span>Bø<button class="rm" title="清空此小节"><svg class="ico" aria-hidden="true"><use href="#ic-close"></use></svg></button><button class="gt" title="选择吉他指法"><svg class="ico" aria-hidden="true"><use href="#ic-guitar"></use></svg></button><svg class="gdiag" width="66" height="62.699999999999996" viewBox="0 0 66 62.699999999999996" xmlns="http://www.w3.org/2000/svg"><line x1="9.900000000000002" y1="16.500000000000004" x2="56.099999999999994" y2="16.500000000000004" stroke="#e8ebf0" stroke-width="2.6"></line><line x1="9.900000000000002" y1="28.050000000000004" x2="56.099999999999994" y2="28.050000000000004" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="39.6" x2="56.099999999999994" y2="39.6" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="51.150000000000006" x2="56.099999999999994" y2="51.150000000000006" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="62.7" x2="56.099999999999994" y2="62.7" stroke="#e8ebf0" stroke-width="1"></line><line x1="9.900000000000002" y1="16.500000000000004" x2="9.900000000000002" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="19.14" y1="16.500000000000004" x2="19.14" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="28.38" y1="16.500000000000004" x2="28.38" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="37.62" y1="16.500000000000004" x2="37.62" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="46.86" y1="16.500000000000004" x2="46.86" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><line x1="56.099999999999994" y1="16.500000000000004" x2="56.099999999999994" y2="62.7" stroke="#e8ebf0" stroke-width="0.8"></line><text x="6.900000000000002" y="26.895000000000003" fill="#e8ebf0" font-size="5.1" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="600">1fr</text><circle cx="9.900000000000002" cy="22.275000000000002" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="19.14" cy="33.825" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="28.38" cy="45.375" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="37.62" cy="56.925" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="46.86" cy="45.375" r="4.199999999999999" fill="#e8ebf0"></circle><circle cx="56.099999999999994" cy="22.275000000000002" r="4.199999999999999" fill="#e8ebf0"></circle></svg></div><div class="barcell" data-si="0" data-bi="1"><span class="bn">2</span><span style="color:#3d434e">·</span></div><div class="barcell" data-si="0" data-bi="2"><span class="bn">3</span><span style="color:#3d434e">·</span></div><div class="barcell" data-si="0" data-bi="3"><span class="bn">4</span><span style="color:#3d434e">·</span></div></div></div></div>
       <div class="legend" id="legend" data-page-node-id="legendFix001"></div>
       <div class="sheet" id="sheet" data-page-node-id="04gapWqqx2JfmfzxbNnGGI">
         <h3 id="sheetTitle" data-page-node-id="Gc9aJkgMrJs3jilX8wsQod">Lead Sheet</h3>
@@ -538,11 +557,11 @@
       </div>
 
       <div class="midi-card" id="midiCard" data-page-node-id="7KrCGyq67JoJr6o7r0oacR">
-        <h3 data-page-node-id="DXSVs5C5uHq7M3qd3CBdx3">🎹 MIDI 和弦识别</h3>
+        <h3 data-page-node-id="DXSVs5C5uHq7M3qd3CBdx3"><svg class="ico" aria-hidden="true"><use href="#ic-keyboard"></use></svg> MIDI 和弦识别</h3>
         <div class="mc-hint" data-page-node-id="0dmc6k6vsZaGGjpIn3xF29">接上 MIDI 键盘，弹的和弦实时识别。也可点下面虚拟键试试。</div>
         <div class="midi-row" data-page-node-id="yqaMHJUA07gtpJMGwAvcpA">
           <select id="midiIn" data-page-node-id="UO8GlvPzu1WwgCPNBeQ4NE"><option value="" data-page-node-id="jQP3krcFTZunO2QpicJHDx">— 选择 MIDI 输入设备 —</option></select>
-          <button id="midiRefresh" style="flex:0 0 auto;padding:5px 10px;" title="刷新设备列表" data-page-node-id="2IYveZpNLK6qsofoCRA6tM">↻</button>
+          <button id="midiRefresh" style="flex:0 0 auto;padding:5px 10px;" title="刷新设备列表" data-page-node-id="2IYveZpNLK6qsofoCRA6tM"><svg class="ico" aria-hidden="true"><use href="#ic-refresh"></use></svg></button>
         </div>
         <div class="mc-status err" id="midiStatus" data-page-node-id="ktf2wVBgJeLaWB5ythwD4S" title="浏览器要求用户手势后才能授权：点一下页面任意处即可连接键盘">MIDI 权限被拒绝：The request is not allowed by the user agent or the platform in the current context.</div>
         <div class="mc-keys" id="mcKeys" data-page-node-id="hQDAzqRR5p9Gn0hDsjdDfu"><span style="color:#525a6b;font-size:12px;" data-page-node-id="GmiDCuI9ZMGClHNd4OtB51">等待输入…</span></div>
@@ -552,9 +571,9 @@
           <div class="mc-quality" id="mcQuality" data-page-node-id="gfHoNJ2et6tpOlhhc6w6Lo">弹和弦开始识别</div>
         </div>
         <div class="mc-actions" data-page-node-id="F90CPi00jDHnnvVqaxWzhU">
-          <button id="mcPlay" disabled="" data-page-node-id="fPrYRGrwbLU0GNB7HaP5Ye">▶ 试听</button>
-          <button id="mcAdd" disabled="" class="primary" data-page-node-id="UjUZsIKuFeMUOYQSECEgzH">➕ 加入下一空小节</button>
-          <button id="mcGt" disabled="" data-page-node-id="vSt3SvjRzRh081ndfe34Uc">🎸 指法</button>
+          <button id="mcPlay" disabled="" data-page-node-id="fPrYRGrwbLU0GNB7HaP5Ye"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg> 试听</button>
+          <button id="mcAdd" disabled="" class="primary" data-page-node-id="UjUZsIKuFeMUOYQSECEgzH"><svg class="ico" aria-hidden="true"><use href="#ic-plus"></use></svg> 加入下一空小节</button>
+          <button id="mcGt" disabled="" data-page-node-id="vSt3SvjRzRh081ndfe34Uc"><svg class="ico" aria-hidden="true"><use href="#ic-guitar"></use></svg> 指法</button>
         </div>
       </div>
     </div>
@@ -1757,7 +1776,7 @@ function renderSections(){
     delBar.className = 'sec-barbtn'; delBar.textContent = '－小节'; delBar.title = '删掉最后一小节';
     delBar.addEventListener('click', ()=>{ if(sec.bars.length>1){ sec.bars.pop(); renderSections(); } });
     const del = document.createElement('button');
-    del.className = 'sec-del'; del.textContent = '🗑'; del.title = '删除段落';
+    del.className = 'sec-del'; del.innerHTML = ico('trash'); del.title = '删除段落';
     del.addEventListener('click', ()=>{ sections.splice(si,1); renderSections(); });
     head.appendChild(name); head.appendChild(meta); head.appendChild(addBar); head.appendChild(delBar); head.appendChild(del);
     d.appendChild(head);
@@ -1770,7 +1789,7 @@ function renderSections(){
       b.dataset.si = si; b.dataset.bi = bi;
       if(ch){
         b.style.color = ch.color;
-        b.innerHTML = `<span class="bn">${bi+1}</span>${ch.label}<button class="vb" title="和弦变体：sus/add9/升降音">±</button><button class="rm" title="清空此小节">✕</button><button class="gt" title="选择吉他指法">🎸</button>`;
+        b.innerHTML = `<span class="bn">${bi+1}</span>${ch.label}<button class="vb" title="和弦变体：sus/add9/升降音">±</button><button class="rm" title="清空此小节">${ico('close')}</button><button class="gt" title="选择吉他指法">${ico('guitar')}</button>`;
         b.querySelector('.vb').addEventListener('click', ev=>{
           ev.stopPropagation();
           const r = ev.target.getBoundingClientRect();
@@ -1963,7 +1982,7 @@ document.getElementById('moreToggle').addEventListener('click', ()=>{
   const open = document.getElementById('moreArea').style.display !== 'none';
   document.getElementById('moreArea').style.display = open ? 'none' : '';
   document.getElementById('moreArea2').style.display = open ? 'none' : '';
-  document.getElementById('moreToggle').textContent = open ? '⚙' : '✕';
+  document.getElementById('moreToggle').innerHTML = open ? ico('gear') : ico('close');
 });
 barsPerSecSel.addEventListener('change', ()=>{
   // 调整所有段落的小节数（截断或补空）
@@ -2045,7 +2064,7 @@ document.getElementById('importFile').addEventListener('change', ev=>{
       if(loadSongData(JSON.parse(r.result))){
         const btn = document.getElementById('importSong');
         btn.textContent = '✓';
-        setTimeout(()=>{ btn.textContent = '📥'; }, 1200);
+        setTimeout(()=>{ btn.innerHTML = ico('import'); }, 1200);
       } else alert('文件格式不对：缺少 sections');
     }catch(e){ alert('导入失败：不是有效的 JSON'); }
   };
@@ -2710,9 +2729,9 @@ if(navigator.requestMIDIAccess){
 <!-- 我的歌曲抽屉 -->
 <div class="songs-drawer" id="songsDrawer">
   <div class="songs-card">
-    <div class="songs-head"><h3>🎵 我的歌曲</h3><button id="songsClose" class="songs-close" title="关闭">✕</button></div>
+    <div class="songs-head"><h3><svg class="ico" aria-hidden="true"><use href="#ic-music"></use></svg> 我的歌曲</h3><button id="songsClose" class="songs-close" title="关闭"><svg class="ico" aria-hidden="true"><use href="#ic-close"></use></svg></button></div>
     <div class="songs-list" id="songsList"></div>
-    <div class="songs-foot">点 💾 存当前歌 · 点「恢复」载回 · 可导出或删除</div>
+    <div class="songs-foot">点上方「存入」按钮存当前歌 · 点「恢复」载回 · 可导出或删除</div>
   </div>
 </div>
 <script>
@@ -2724,7 +2743,7 @@ function songAutoName(){
   for(const sec of sections){
     for(const ch of sec.bars){
       if(ch){
-        const n = (ch.label||'').replace(/[±✕🎸]/g,'').trim();
+        const n = (ch.label||'').replace(/[±✕]/g,'').trim();
         if(n) parts.push(n);
       }
       if(parts.length >= 4) break;
@@ -2746,13 +2765,13 @@ function saveToLibrary(){
   try{ localStorage.setItem(SAVE_KEY, JSON.stringify(song)); }catch(e){}
   const btn = document.getElementById('saveSong');
   btn.textContent = '✓ ' + lib.length + '首';
-  setTimeout(()=>{ btn.textContent = '💾'; }, 1400);
+  setTimeout(()=>{ btn.innerHTML = ico('save'); }, 1400);
 }
 function renderSongs(){
   const list = document.getElementById('songsList');
   const lib = getSongsLib();
   list.innerHTML = '';
-  if(!lib.length){ list.innerHTML = '<div class="song-empty">还没有保存的歌。<br>拖几段和弦进来，点 💾 存进来。</div>'; return; }
+  if(!lib.length){ list.innerHTML = '<div class="song-empty">还没有保存的歌。<br>拖几段和弦进来，点上方存盘按钮存进来。</div>'; return; }
   lib.slice().reverse().forEach(item=>{
     const div = document.createElement('div');
     div.className = 'song-item';
@@ -2771,7 +2790,7 @@ function renderSongs(){
       a.download = (item.name || 'song').replace(/[^\w一-龥-]/g,'_') + '.json'; a.click();
       URL.revokeObjectURL(a.href);
     });
-    const bDel = document.createElement('button'); bDel.className = 'song-del'; bDel.textContent = '🗑';
+    const bDel = document.createElement('button'); bDel.className = 'song-del'; bDel.innerHTML = ico('trash');
     bDel.addEventListener('click', ()=>{
       if(confirm('删除「' + item.name + '」？')){
         const nl = lib.filter(s=>s.id !== item.id);

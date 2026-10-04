@@ -229,6 +229,15 @@
   }
   .mc-bkey:hover{background:linear-gradient(#4a5264,#2a3040);}
   .mc-bkey.down{background:linear-gradient(#38bdf8,#0284c7);}
+  /* 和弦音点亮（点左侧和弦/小节时在虚拟键盘上标出组成音） */
+  .mc-wkey.lit{background:linear-gradient(#fde68a,#f59e0b);}
+  .mc-bkey.lit{background:linear-gradient(#d97706,#92400e);}
+  .mc-wkey.lit.root{background:linear-gradient(#fca5a5,#ef4444);}
+  .mc-bkey.lit.root{background:linear-gradient(#dc2626,#7f1d1d);}
+  .mc-wkey.lit.root::after,.mc-bkey.lit.root::after{
+    content:'●';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+    font-size:8px;color:rgba(255,255,255,.85);
+  }
   /* ---- 谱面视图（lead sheet） ---- */
   .sheet{
     display:none;margin-top:14px;
@@ -906,6 +915,7 @@ function playChord(rowIdx, entry, cell){
   const {ivs, rootPc, noteNames} = getChord(rowIdx, entry);
   const root = rootMidiOf(rootPc);
   const tones = ivs.map(v=>root+v);
+  showChordOnPad(rootPc, ivs);
   playArp([cell], ()=>buildPattern(tones, patSel.value, (+tempo.value)/1000));
 }
 
@@ -1821,6 +1831,7 @@ function renderSections(){
 function playChordData(ch, cellEl){
   ensureAC();
   stopAll();
+  showChordOnPad(ch.rootPc, ch.ivs);
   const root = rootMidiOf(ch.rootPc);
   const tones = ch.ivs.map(v=>root+v);
   const tone = toneSel.value;
@@ -2361,6 +2372,35 @@ function renderPad(){
     el.addEventListener('touchend', up);
   });
 }
+/* 点亮虚拟键盘：在 C3–C5 范围内标出和弦组成音（根音红色、其余琥珀色）。
+   音区折叠逻辑与 rootMidiOf 一致：根音落在 C4(60)~G4(67)，超出往上折叠。 */
+function clearPadLit(){
+  document.querySelectorAll('.mc-wkey.lit,.mc-bkey.lit').forEach(el=>{
+    el.classList.remove('lit','root');
+    el.style.removeProperty('--root-done');
+  });
+}
+function showChordOnPad(rootPc, ivs){
+  clearPadLit();
+  // 根音：与 rootMidiOf 相同的折叠（60+pc，pc>7 降八度），保证在键盘范围内
+  const rootMidi = rootMidiOf(rootPc);
+  const markKey = (midi, isRoot)=>{
+    const el = document.querySelector(`.mc-wkey[data-midi="${midi}"],.mc-bkey[data-midi="${midi}"]`);
+    if(!el) return;
+    el.classList.add('lit');
+    if(isRoot) el.classList.add('root');
+  };
+  markKey(rootMidi, true);
+  ivs.forEach(v=>{
+    if(v===0) return;                     // 根音已标
+    let m = rootMidi + v;
+    // 超出键盘上限（C5=72）时降八度折叠，尽量留在可视范围
+    while(m > 72) m -= 12;
+    if(m < 48) m += 12;
+    markKey(m, false);
+  });
+}
+
 /* 电脑键盘两排映射（A S D F G H J = 白键，W E T Y U = 黑键） */
 const KEYMAP = {
   KeyA:60, KeyS:62, KeyD:64, KeyF:65, KeyG:67, KeyH:69, KeyJ:71,
@@ -2490,6 +2530,7 @@ function identifyChord(midis){
 
 /* 按键变化 → 更新显示 + 识别 */
 function onHeldChanged(){
+  if(midiHeld.size > 0) clearPadLit();   // 手动弹奏时清掉和弦点亮
   renderVirtKeys();
   const rec = identifyChord([...midiHeld]);
   showChordResult(rec);
@@ -2585,6 +2626,7 @@ document.getElementById('midiRefresh').addEventListener('click', ()=>{
 /* 卡片按钮：试听 / 加入歌曲 / 生成指法 */
 mcPlay.addEventListener('click', ()=>{
   if(!lastRecognized) return;
+  showChordOnPad(lastRecognized.rootPc, lastRecognized.ivs);
   const rec = lastRecognized;
   const cellMock = null;
   const ch = {rootPc:rec.rootPc, ivs:rec.ivs, label:rec.label, color:rec.color};

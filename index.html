@@ -118,6 +118,26 @@
   }
   .gt-opt:hover{border-color:#4ade80;background:#10231a;}
   .gt-opt.cur{border-color:#4ade80;}
+  /* 把位信息：弦名行 + 品位行 + 把位总结 */
+  .gt-strings{display:flex;justify-content:center;gap:0;margin:0 0 1px;}
+  .gt-strings span{flex:1;font-size:9px;color:#6b7488;letter-spacing:-.3px;white-space:nowrap;}
+  .gt-frets{display:flex;justify-content:center;margin:0;}
+  .gt-frets span{
+    flex:1;font-size:11.5px;font-weight:700;color:#e8ebf0;
+    font-family:ui-monospace,Menlo,monospace;white-space:nowrap;
+  }
+  .gt-frets span.mute{color:#5b6274;}
+  .gt-frets span.open{color:#8a92a3;font-weight:600;}
+  .gt-frets span.barre{color:#4ade80;}
+  .gt-pos{
+    margin-top:3px;font-size:10px;color:#9aa2b1;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;
+  }
+  .gt-pos .pos-badge{
+    background:#123a5c;border:1px solid #1e6ba8;color:#9fd0ff;
+    border-radius:5px;padding:0 5px;font-size:10px;font-weight:700;
+  }
+  .gt-pos .pos-note{color:#6b7488;font-weight:500;}
   .gt-pop .foot{display:flex;gap:6px;margin-top:10px;}
   .gt-pop .foot button{
     flex:1;padding:6px 0;border-radius:8px;border:1.5px solid #2c3342;
@@ -593,7 +613,7 @@
 
 <div class="gt-pop" id="gtPop" data-page-node-id="8fYQG1VmQnxNRxtzt3jvtM">
   <h3 id="gtTitle" data-page-node-id="tomeGJ98yMcURtaYsC82dK">吉他指法</h3>
-  <div class="hint" data-page-node-id="S8U98DMoctarSZVWRcYluN">同一和弦有多种按法，选一个放进小节。✕ = 闷音不弹，○ = 空弦。</div>
+  <div class="hint" data-page-node-id="S8U98DMoctarSZVWRcYluN">同一和弦有多种按法，选一个放进小节。数字=该弦按品，✕ = 闷音不弹，○ = 空弦，横按品位标绿。</div>
   <div class="gt-list" id="gtList" data-page-node-id="ef4ZfGf8QCjpBQk00j00dx"></div>
   <div class="foot" data-page-node-id="iKLpzeIaOpz7htTQqNhMq7">
     <button id="gtCancel" data-page-node-id="1MSA4cDhYlpnF3aCKCBUGu">取消</button>
@@ -1234,9 +1254,10 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
     const x = pad + i*sd;
     s += `<line x1="${x}" y1="${padY}" x2="${x}" y2="${padY+4*fd}" stroke="${color}" stroke-width="${lw*0.8}"/>`;
   }
-  // 起始品数字（把位标记，始终显示）
+  // 起始品数字（把位标记，始终显示）—— 写成「第N品」更直观
   const posNum = offset > 0 ? offset + 1 : 1;
-  s += `<text x="${pad-3}" y="${padY + fd*0.9}" fill="${color}" font-size="${fontSize*0.85}" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="600">${posNum}fr</text>`;
+  const posTxt = posNum === 1 ? '1品' : posNum + '品';
+  s += `<text x="${pad-4}" y="${padY + fd*0.9}" fill="${color}" font-size="${fontSize*0.8}" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="700">${posTxt}</text>`;
   // 弦上的标记：-1 闷音✕（图外上方），0 空弦○，否则实心点
   frets.forEach((f,i)=>{
     const x = pad + i*sd;
@@ -1279,6 +1300,52 @@ const gtPop = document.getElementById('gtPop');
 const gtList = document.getElementById('gtList');
 let gtTarget = null;   // {si, bi}
 
+/* 把位标签：明确标出 6弦→1弦、每弦品位、把位区间、横按提示 */
+function gtVoicingLabel(frets){
+  const played = frets.filter(f => f > 0);
+  const minF = played.length ? Math.min(...played) : 0;
+  const maxF = played.length ? Math.max(...played) : 0;
+  const hasBarre = (() => {
+    if(minF <= 0) return false;
+    const idx = frets.map((f,i)=> f===minF ? i : -1).filter(i=>i>=0);
+    if(idx.length < 3) return false;
+    for(let i=idx[0]; i<6; i++){
+      if(frets[i] !== -1 && frets[i] !== minF && frets[i] < minF) return false;
+      if(frets[i] === 0) return false;
+    }
+    return true;
+  })();
+  // 弦名行（6 弦在左，1 弦在右）
+  const strings = '<div class="gt-strings">' +
+    frets.map((f,i)=>`<span>${6-i}弦</span>`).join('') + '</div>';
+  // 品位行
+  const fretCells = '<div class="gt-frets">' + frets.map((f,i)=>{
+    if(f === -1) return '<span class="mute">✕</span>';
+    if(f === 0)  return '<span class="open">○</span>';
+    const cls = (hasBarre && f === minF) ? 'barre' : '';
+    return `<span class="${cls}">${f}</span>`;
+  }).join('') + '</div>';
+  // 把位总结
+  const muteN = frets.filter(f=>f===-1).length;
+  const openN = frets.filter(f=>f===0).length;
+  let pos;
+  if(!played.length && muteN === 0){
+    pos = '<span class="pos-badge">全空弦</span>';
+  } else if(!played.length){
+    pos = '<span class="pos-badge">全闷音</span>';
+  } else if(minF === maxF){
+    pos = `<span class="pos-badge">第${minF}品</span>`;
+  } else {
+    pos = `<span class="pos-badge">第${minF}–${maxF}品</span>`;
+  }
+  const notes = [];
+  if(hasBarre) notes.push('横按');
+  if(muteN) notes.push(`闷${muteN}弦`);
+  if(openN) notes.push(`空${openN}弦`);
+  const noteHtml = notes.length ? `<span class="pos-note">${notes.join(' · ')}</span>` : '';
+  return strings + fretCells + `<div class="gt-pos">${pos}${noteHtml}</div>`;
+}
+
 function openGtPop(si, bi, x, y){
   gtTarget = {si, bi};
   const ch = sections[si].bars[bi];
@@ -1291,8 +1358,7 @@ function openGtPop(si, bi, x, y){
     const cur = ch.gt && ch.gt.frets.join(',') === v.frets.join(',');
     const d = document.createElement('div');
     d.className = 'gt-opt' + (cur ? ' cur' : '');
-    const fretLabel = v.frets.map(f=>f===-1?'✕':f===0?'○':f).join(' ');
-    d.innerHTML = guitarDiagramSVG(v.points, 68, '#e8ebf0') + `<div style="margin-top:2px;font-weight:600;">${fretLabel}</div>`;
+    d.innerHTML = guitarDiagramSVG(v.points, 68, '#e8ebf0') + gtVoicingLabel(v.frets);
     d.addEventListener('click', ()=>{
       sections[si].bars[bi] = {...ch, gt:{frets:v.frets}};
       renderSections();

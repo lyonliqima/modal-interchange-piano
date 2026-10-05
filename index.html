@@ -1233,26 +1233,34 @@ function guitarVoicings(rootPc, ivs, maxResults=12){
 /* SVG 指法图（参考 buitar SvgChord：横按、闷音✕、空弦○、超品偏移） */
 function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
   const n = points.length;                       // 6 弦（points[0]=6弦低音 … [5]=1弦）
-  const radius = size*0.05, width = size*0.7;
-  const sd = width/(n-1), fd = width/4;
+  const width = size*0.7;
+  const sd = width/(n-1);
   const titleH = size*0.1;
-  const pad = (size-width)/2, padY = pad + titleH;
   const fontSize = size/11, lw = Math.max(size/100, 1);
   const frets = points.map(p=>p.fret);
   const played = frets.filter(f=>f>0);
   const maxF = played.length ? Math.max(...played) : 0;
   const minF = played.length ? Math.min(...played) : 0;
+  // 窗口起点：超过 4 品时从最低按品前一品开始
   const offset = maxF > 4 ? minF - 1 : 0;
-  let s = `<svg class="gdiag" width="${size}" height="${size*0.95}" viewBox="0 0 ${size} ${size*0.95}" xmlns="http://www.w3.org/2000/svg">`;
-  // 品柱（4 格 5 线）
-  for(let i=0;i<=4;i++){
+  // 品格数：至少 4 格；若指距超过 3 品则扩到刚好装得下最高的点，
+  // 否则高音点的圆点会落到网格外（甚至画布外）被截断。
+  const span = played.length ? (maxF - offset) : 0;     // 需要显示到的品数
+  const cells = Math.max(4, span);
+  const fd = width/cells;
+  const pad = (size-width)/2, padY = pad + titleH;
+  const gridH = cells*fd;
+  const totalH = padY + gridH + pad*0.6;
+  let s = `<svg class="gdiag" width="${size}" height="${totalH}" viewBox="0 0 ${size} ${totalH}" xmlns="http://www.w3.org/2000/svg">`;
+  // 品柱（cells 格 cells+1 线；i===0 为粗线即弦枕/起点）
+  for(let i=0;i<=cells;i++){
     const y = padY + i*fd;
     s += `<line x1="${pad}" y1="${y}" x2="${pad+width}" y2="${y}" stroke="${color}" stroke-width="${i===0?lw*2.6:lw}"/>`;
   }
   // 弦
   for(let i=0;i<n;i++){
     const x = pad + i*sd;
-    s += `<line x1="${x}" y1="${padY}" x2="${x}" y2="${padY+4*fd}" stroke="${color}" stroke-width="${lw*0.8}"/>`;
+    s += `<line x1="${x}" y1="${padY}" x2="${x}" y2="${padY+gridH}" stroke="${color}" stroke-width="${lw*0.8}"/>`;
   }
   // 起始品数字（把位标记，始终显示）—— 写成「第N品」更直观
   const posNum = offset > 0 ? offset + 1 : 1;
@@ -1266,8 +1274,6 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
       const k = width/22;
       s += `<line x1="${x-k}" y1="${yAbove-k}" x2="${x+k}" y2="${yAbove+k}" stroke="${color}" stroke-width="${lw*0.7}"/>`;
       s += `<line x1="${x-k}" y1="${yAbove+k}" x2="${x+k}" y2="${yAbove-k}" stroke="${color}" stroke-width="${lw*0.7}"/>`;
-    } else if(f - offset === 0 && f > 0){
-      s += `<circle cx="${x}" cy="${yAbove}" r="${width/20}" fill="none" stroke="${color}" stroke-width="${lw*0.8}"/>`;
     } else if(f === 0){
       s += `<circle cx="${x}" cy="${yAbove}" r="${width/20}" fill="none" stroke="${color}" stroke-width="${lw*0.8}"/>`;
     } else {
@@ -1276,7 +1282,8 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
     }
   });
   // 大横按（最低按品上 ≥3 根弦且低音侧无空弦穿越）
-  if(offset === 0 && minF > 0){
+  // 判定逻辑与 gtVoicingLabel 的 hasBarre 保持一致：高把位同样画出横按条
+  if(minF > 0){
     const barreIdx = frets.map((f,i)=>f===minF ? i : -1).filter(i=>i>=0);
     if(barreIdx.length >= 3){
       let valid = true;
@@ -1286,7 +1293,7 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
       }
       if(valid){
         const x1 = pad + barreIdx[0]*sd, x2 = pad + barreIdx[barreIdx.length-1]*sd;
-        const y = padY + (minF-0.5)*fd;
+        const y = padY + (minF - offset - 0.5)*fd;
         s += `<rect x="${x1 - sd*0.28}" y="${y - width/24}" width="${x2-x1 + sd*0.56}" height="${width/12}" rx="${width/24}" fill="${color}"/>`;
       }
     }

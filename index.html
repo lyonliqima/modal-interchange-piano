@@ -456,7 +456,7 @@
       <div class="bar" data-page-node-id="MCuwgCzltGKdX9fXb6HgQL">
     <div class="group" data-page-node-id="vndZ4XqWfUM0vcoCbg05ax">
       <label data-page-node-id="C0Ld3Mv2LM4ZSqRYXTupcP">主音</label>
-      <select id="keySel" data-page-node-id="VKS8uDkYuoZT1SBmSqe3DT"><option value="0" data-page-node-id="L9QqkxTqfOw67cbYJOZJI2">C</option><option value="1" data-page-node-id="EP2aLcB27aoizEu0dtDWNr">D♭</option><option value="2" data-page-node-id="F4pWI70Uf0w00QBlriXjWK">D</option><option value="3" data-page-node-id="SYKMzaZ07JHkX0J8RGnU8P">E♭</option><option value="4" data-page-node-id="Xxy1CFMV2T0pVFHeaddkM4">E</option><option value="5" data-page-node-id="hLv4Wrqc4dlLxtjPP0fapN">F</option><option value="6" data-page-node-id="w7ges5TaPTUEpQfuzyCXf6">G♭</option><option value="7" data-page-node-id="WGVm0VStw1SLfZLYDDArb1">G</option><option value="8" data-page-node-id="kO8vhyH6L5tfrApGyCl10C">A♭</option><option value="9" data-page-node-id="r4jTb6KzWST6a0lGetfmQJ">A</option><option value="10" data-page-node-id="2u6lNqHouHaLRqgbc2UzUA">B♭</option><option value="11" data-page-node-id="I4EjttOPcF5Io4GZoDOvwr">B</option><option value="0">C</option><option value="1">D♭</option><option value="2">D</option><option value="3">E♭</option><option value="4">E</option><option value="5">F</option><option value="6">G♭</option><option value="7">G</option><option value="8">A♭</option><option value="9">A</option><option value="10">B♭</option><option value="11">B</option></select>
+      <select id="keySel" data-page-node-id="VKS8uDkYuoZT1SBmSqe3DT"></select>
       <span class="keynow" id="keyNow" data-page-node-id="7kz2ZtmanX29SJOjIh6HKA">C 调</span>
     </div>
     <div class="group" data-page-node-id="l20m4yZH2IF15AjBd5Tdf2">
@@ -976,6 +976,8 @@ function playScale(rowIdx, labelEl){
 }
 
 /* ============ UI 构建 ============ */
+/* 先清空再生成：HTML 里已有静态 option，若不清理会与动态生成项重复 */
+keySel.innerHTML = '';
 SHARP.forEach((n,i)=>{
   const o = document.createElement('option');
   o.value = i;

@@ -1205,15 +1205,37 @@ function guitarVoicings(rootPc, ivs){
         findNext(s + 1, [...taps, point], out);
     }
   };
-  // fingersFilter：横按食指计 1，其余每个按位再计 1；总数须 1~4，且最低/非零最低按品 < 12
+  /* fingersFilter：按「弦-手指」的真实物理可行性判断，分两步——
+     ① 同一品位的几根弦，只有在能用一根手指横按时才算一根手指。横按必然压住
+        中间所有弦，所以要求该品位的弦所在的连续区间内，没有品位更低（含空弦）的弦：
+        有的话那些弦会被横按改音/闷掉，此时只能拆成多根手指分别按。
+     ② 各品位所需手指数相加，不得超过 4。
+     反例：F 大的 1-0-3-2-1-1 看着只需 3 个品位，但 1 品要按 6 弦与 1、2 弦，
+     横按区间跨过 5 弦空弦 A，物理上按不出来——必须计 3 根手指在 1 品，
+     加上 2 品、3 品各一根共 5 根，于是被正确否决。
+     另注：buetar 原写法是「有按位就补一根横按手指，其余按位各加一根」，
+     但它拿含空弦的最小值当最低品，只要有空弦那根横按手指就消失，
+     从而误杀合法指法（F7♯9♯5 的 1-0-1-1-2-1 曾被算成 5 根手指而丢弃）。 */
   const fingersOk = taps => {
-    const minG = Math.min(...taps.map(t => t.g));
-    let n = minG > 0 ? 1 : 0, notZeroMin = Infinity;
-    for(const t of taps){
-      if(t.g > minG) n++;
-      if(t.g > 0 && t.g < notZeroMin) notZeroMin = t.g;
+    const nz = taps.filter(t => t.g > 0);
+    if(!nz.length) return false;                       // 全是空弦，不成指型
+    if(Math.min(...nz.map(t => t.g)) > BUI_MAX_GRADE) return false;   // 不超出指板
+    const byFret = new Map();
+    for(const t of nz){
+      if(!byFret.has(t.g)) byFret.set(t.g, []);
+      byFret.get(t.g).push(t.s);
     }
-    return n <= 4 && n >= 1 && minG < 12 && notZeroMin < 12;
+    let fingers = 0;
+    for(const [f, ss] of byFret){
+      const lo = Math.min(...ss), hi = Math.max(...ss);
+      let canBarre = true;
+      for(const t of taps){
+        if(t.s >= lo && t.s <= hi && t.g < f){ canBarre = false; break; }
+      }
+      fingers += canBarre ? 1 : ss.length;
+      if(fingers > 4) return false;
+    }
+    return true;
   };
   // repeatingPitchFilter：相邻弦不得同音，且不得出现相同绝对音高
   const repeatOk = taps => {
@@ -1232,12 +1254,15 @@ function guitarVoicings(rootPc, ivs){
   };
   const collectWith = okFn => {
     const raw = [];
-    // 根音位置（bulet 只以和弦第一个音为根音，grade<12）
-    // 遍历所有可作根音的弦。不用 buitar 的「剩余弦数 ≥ 和弦音数」剪枝：
-    // 11/13 和弦必须省略音，剪枝会让 7 音和弦直接 0 结果；不完整结果交给各 level 过滤器剔除
+    /* 根音位置：遍历所有可作根音的弦与品位。
+       两层剪枝都已去掉——
+       · 「剩余弦数 ≥ 和弦音数」：11/13 和弦必须省略音，保留它会让 7 音和弦直接 0 结果
+       · 「根音品位 < 12」：会把整条高把位指法挡在门外。Ebdim(add9) 的低把位确实按不出来，
+         但它能在 4弦13品/3弦11品/2弦10品/1弦13品 按出来，此限制一加就误报「找不到按法」
+       不完整的结果交给各 level 过滤器剔除；排序按最高品位升序，低把位自然排在最前 */
     for(let s = 0; s < keyboard.length; s++){
       for(const point of keyboard[s]){
-        if(point.tone !== root || point.g >= 12) continue;
+        if(point.tone !== root || point.g > BUI_MAX_GRADE) continue;
         const list = [];
         findNext(s + 1, [point], list);
         raw.push(...list);
@@ -1254,13 +1279,24 @@ function guitarVoicings(rootPc, ivs){
      其余一律不可省：根音、三音、七音、以及名称来源音（11/13）和所有变化音。
      否则和弦名就名不副实——省掉七音的 13 和弦只剩一个六和弦，省掉九音的 add9 就是大三和弦。 */
   const toneSet = taps => new Set(taps.map(t => t.tone));
-  const P5 = (root + 7) % 12, M9 = (root + 2) % 12, P11 = (root + 5) % 12, M13 = (root + 9) % 12;
-  const has13 = chordsPc.includes(M13) || chordsPc.includes((root + 8) % 12);
-  const has11 = chordsPc.includes(P11) || chordsPc.includes((root + 6) % 12);
+  const P5 = (root + 7) % 12, M9 = (root + 2) % 12, P11 = (root + 5) % 12;
+  /* 「这个和弦是不是真的 11/13 和弦」必须用定义里的原始音程判断，不能用音级 pc。
+     pc 是模 12 的数，一个 pc 会对应多个互不相同的音程：
+       ♯5(8) 与 ♭13(20→8)、♭5(6) 与 ♯11(18→6)、
+       6 音(9) 与 13 音(21→9)、纯四度(5) 与 11 音(17→5)
+     用 pc 判断会张冠李戴，把命名音当成"可省的次要音"：
+       Caug(add9) 的 ♯5 被认成 ♭13 → 九音 D 被省 → 实际弹出 Caug
+       C69 的 6 音被认成 13 → 九音 D 被省 → 实际弹出 C6
+       Cdim(add9) 的 ♭5 被认成 ♯11 → 九音被省
+       C9sus4 的四度被认成 11 音 → 九音被省
+     结果就是和弦名与实弹不符。 */
+  const hasIv = v => ivs.includes(v);
+  const is11 = hasIv(17) || hasIv(18);                                       // 11 / ♯11
+  const is13 = hasIv(21) || hasIv(20);                                       // 13 / ♭13
   const omitSet = new Set();
   if(chordsPc.length >= 4 && chordsPc.includes(P5)) omitSet.add(P5);          // 自然五度
-  if((has13 || has11) && chordsPc.includes(M9)) omitSet.add(M9);              // 9 音
-  if(has13 && chordsPc.includes(P11)) omitSet.add(P11);                        // 11 音
+  if((is11 || is13) && chordsPc.includes(M9)) omitSet.add(M9);               // 只有 11/13 和弦可省九音
+  if(is13 && is11 && chordsPc.includes(P11)) omitSet.add(P11);               // 只有 13 和弦可省十一音
   const mustPcs = chordsPc.filter(pc => !omitSet.has(pc));
   const levels = [
     taps => toneSet(taps).size === chordsPc.length,          // L1 buitar 完整组成音

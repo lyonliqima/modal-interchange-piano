@@ -110,7 +110,9 @@
   .gt-pop.show{display:block;}
   .gt-pop h3{font-size:14px;color:#fff;margin-bottom:2px;}
   .gt-pop .hint{font-size:11.5px;color:#8a92a3;margin-bottom:10px;line-height:1.5;}
-  .gt-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .gt-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:min(64vh,520px);overflow-y:auto;padding-right:2px;}
+  .gt-list::-webkit-scrollbar{width:6px;}
+  .gt-list::-webkit-scrollbar-thumb{background:#2c3342;border-radius:3px;}
   .gt-opt{
     background:#161b26;border:2px solid #2c3342;border-radius:10px;
     padding:6px 2px 3px;cursor:pointer;text-align:center;color:#c3c9d4;font-size:10.5px;
@@ -121,6 +123,8 @@
   /* 把位信息：弦名行 + 品位行 + 把位总结 */
   .gt-strings{display:flex;justify-content:center;gap:0;margin:0 0 1px;}
   .gt-strings span{flex:1;font-size:9px;color:#6b7488;letter-spacing:-.3px;white-space:nowrap;}
+  .gt-opennames{display:flex;justify-content:center;gap:0;margin-bottom:1px;}
+  .gt-opennames span{flex:1;font-size:8.5px;color:#4d5568;white-space:nowrap;}
   .gt-frets{display:flex;justify-content:center;margin:0;}
   .gt-frets span{
     flex:1;font-size:11.5px;font-weight:700;color:#e8ebf0;
@@ -613,7 +617,7 @@
 
 <div class="gt-pop" id="gtPop" data-page-node-id="8fYQG1VmQnxNRxtzt3jvtM">
   <h3 id="gtTitle" data-page-node-id="tomeGJ98yMcURtaYsC82dK">吉他指法</h3>
-  <div class="hint" data-page-node-id="S8U98DMoctarSZVWRcYluN">同一和弦有多种按法，选一个放进小节。数字=该弦按品，✕ = 闷音不弹，○ = 空弦，横按品位标绿。</div>
+  <div class="hint" data-page-node-id="S8U98DMoctarSZVWRcYluN">圆点里的数字=左手手指（1食 2中 3无名 4小），✕ = 闷音不弹，○ = 空弦，绿色为横按。</div>
   <div class="gt-list" id="gtList" data-page-node-id="ef4ZfGf8QCjpBQk00j00dx"></div>
   <div class="foot" data-page-node-id="iKLpzeIaOpz7htTQqNhMq7">
     <button id="gtCancel" data-page-node-id="1MSA4cDhYlpnF3aCKCBUGu">取消</button>
@@ -1210,7 +1214,9 @@ function guitarVoicings(rootPc, ivs, maxResults=12){
       // 根音必须出现在和弦里
       const allPcs = frets.map((f,i)=> f>=0 ? (GT_STRINGS[i]+f)%12 : null).filter(v=>v!==null);
       if(!allPcs.includes(root)) return;
-      results.push({points: frets.map((f,i)=>({fret:f, string:6-i})), frets:[...frets], score});
+      // 左手手指编号（同一品位共用一个编号 → 横按天然同号）
+      const fingers = assignFingers(frets);
+      results.push({points: frets.map((f,i)=>({fret:f, string:6-i, finger: fingers[i]})), frets:[...frets], score});
       return;
     }
     for(const f of cand[si]) walk(si+1, [...frets, f], fretted);
@@ -1230,8 +1236,17 @@ function guitarVoicings(rootPc, ivs, maxResults=12){
   return uniq;
 }
 
-/* SVG 指法图（参考 buitar SvgChord：横按、闷音✕、空弦○、超品偏移） */
-function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
+/* 左手手指编号：按品位从低到高依次 1(食指) 2(中指) 3(无名) 4(小指)
+   同一品位（横按）共用同一个编号 */
+function assignFingers(frets){
+  const uniq = [...new Set(frets.filter(f => f > 0))].sort((a,b)=>a-b);
+  const m = new Map();
+  uniq.forEach((f,i)=> m.set(f, i+1));
+  return frets.map(f => f > 0 ? (m.get(f) || 0) : 0);
+}
+
+/* SVG 指法图（参考 buitar SvgChord：横按、闷音✕、空弦○、超品偏移、左手手指编号） */
+function guitarDiagramSVG(points, size=72, color='#e8ebf0', textColor='#0b0e14'){
   const n = points.length;                       // 6 弦（points[0]=6弦低音 … [5]=1弦）
   const titleH = size*0.1;
   // 左侧专门留出「把位栏」，避免把位文字挤到画布外（旧版只留 6px，"1品"都放不下）
@@ -1291,6 +1306,9 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
   const rDot = Math.min(sd*0.32, fd*0.42);
   const rOpen = Math.min(sd*0.20, fd*0.30);
   const kMute = Math.min(sd*0.16, fd*0.22);
+  // 手指编号只在足够大的图上画（弹窗详情图），小图保持干净
+  const showFingers = size >= 78;
+  const fingerFs = rDot*1.25;
   frets.forEach((f,i)=>{
     const x = pad + i*sd;
     const yAbove = padY - fd*0.38;
@@ -1303,6 +1321,10 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
     } else {
       const y = padY + (f - offset - 0.5)*fd;
       s += `<circle cx="${x}" cy="${y}" r="${rDot}" fill="${color}"/>`;
+      const fg = points[i] && points[i].finger;
+      if(showFingers && fg){
+        s += `<text x="${x}" y="${y + fingerFs*0.36}" fill="${textColor}" font-size="${fingerFs.toFixed(2)}" text-anchor="middle" font-family="ui-rounded,sans-serif" font-weight="700">${fg}</text>`;
+      }
     }
   });
   // 大横按（最低按品上 ≥3 根弦且低音侧无空弦穿越）
@@ -1321,6 +1343,12 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
         // 横按条粗细随格高/弦距走，保持与圆点视觉匹配
         const barH = Math.min(fd*0.34, sd*0.42);
         s += `<rect x="${x1 - sd*0.28}" y="${y - barH/2}" width="${x2-x1 + sd*0.56}" height="${barH}" rx="${barH/2}" fill="${color}"/>`;
+        // 横按的手指编号（画在横按条中点）
+        const bf = points[barreIdx[0]] && points[barreIdx[0]].finger;
+        if(showFingers && bf){
+          const cx = (x1+x2)/2;
+          s += `<text x="${cx}" y="${y + fingerFs*0.36}" fill="${textColor}" font-size="${(fingerFs*1.15).toFixed(2)}" text-anchor="middle" font-family="ui-rounded,sans-serif" font-weight="700">${bf}</text>`;
+        }
       }
     }
   }
@@ -1333,8 +1361,11 @@ const gtPop = document.getElementById('gtPop');
 const gtList = document.getElementById('gtList');
 let gtTarget = null;   // {si, bi}
 
-/* 把位标签：明确标出 6弦→1弦、每弦品位、把位区间、横按提示 */
+/* 把位标签：弦名（6弦→1弦）+ 逐弦品位 + 把位区间 + 横按/闷弦/空弦提示
+   fretsIn 传入时可附带手指编号（图上已有，这里只补充图外信息） */
 function gtVoicingLabel(frets){
+  // 标准调弦各弦音名（6 弦 E2 … 1 弦 E4）
+  const OPEN_NAME = ['E','A','D','G','B','E'];
   const played = frets.filter(f => f > 0);
   const minF = played.length ? Math.min(...played) : 0;
   const maxF = played.length ? Math.max(...played) : 0;
@@ -1348,9 +1379,11 @@ function gtVoicingLabel(frets){
     }
     return true;
   })();
-  // 弦名行（6 弦在左，1 弦在右）
+  // 弦名行（6 弦在左，1 弦在右）：上行弦序号，下行该弦空弦音名，分两行避免挤在一起
   const strings = '<div class="gt-strings">' +
-    frets.map((f,i)=>`<span>${6-i}弦</span>`).join('') + '</div>';
+      frets.map((f,i)=>`<span>${6-i}弦</span>`).join('') + '</div>' +
+    '<div class="gt-opennames">' +
+      frets.map((f,i)=>`<span>${OPEN_NAME[i]}</span>`).join('') + '</div>';
   // 品位行
   const fretCells = '<div class="gt-frets">' + frets.map((f,i)=>{
     if(f === -1) return '<span class="mute">✕</span>';
@@ -1391,7 +1424,7 @@ function openGtPop(si, bi, x, y){
     const cur = ch.gt && ch.gt.frets.join(',') === v.frets.join(',');
     const d = document.createElement('div');
     d.className = 'gt-opt' + (cur ? ' cur' : '');
-    d.innerHTML = guitarDiagramSVG(v.points, 68, '#e8ebf0') + gtVoicingLabel(v.frets);
+    d.innerHTML = guitarDiagramSVG(v.points, 92, '#e8ebf0', '#0d1117') + gtVoicingLabel(v.frets);
     d.addEventListener('click', ()=>{
       sections[si].bars[bi] = {...ch, gt:{frets:v.frets}};
       renderSections();

@@ -1183,8 +1183,9 @@ const GT_STRINGS = [40,45,50,55,59,64];   // E2 A2 D3 G3 B3 E4 (6弦→1弦 MIDI
      · 相邻弦不同音、无重复绝对音高（repeatingPitchFilter）
      · 指型互相覆盖时去重（coverTapsReducer）
      · 按最高品位升序 → 低把位/常用开放指型自动排前（gradeSorter）
-   扩展和弦（9/11/13）常无法完整成指，严格模式为空时放宽为「含根音 + ≥3 个不同和弦音」。 */
-const BUI_MAX_GRADE = 17;      // buitar GRADE_NUMS：指板品数
+   扩展和弦（9/11/13）在吉他上必然要省略音，分两级取：L1 组成音完整；
+   L2 允许省自然五度与高位和弦里的 9/11 音，但根音/三音/七音/名称音/变化音必留。 */
+const GT_POS_MAX = 11;         // 可用品位上限：12 品及以上不生成，只收低把位
 const BUI_FINGER_SPAN = 4;     // buitar FINGER_GRADE_NUMS：指距上限
 function guitarVoicings(rootPc, ivs){
   const root = ((rootPc % 12) + 12) % 12;
@@ -1193,7 +1194,7 @@ function guitarVoicings(rootPc, ivs){
   // 指板：每根弦的全部品位点（下标 0 = 6弦）
   const keyboard = GT_STRINGS.map((open, s) => {
     const arr = [];
-    for(let g = 0; g <= BUI_MAX_GRADE; g++) arr.push({ s, g, tone: ((open + g) % 12) });
+    for(let g = 0; g <= GT_POS_MAX; g++) arr.push({ s, g, tone: ((open + g) % 12) });
     return arr;
   });
   // buitar findNextString：逐弦向高音方向取音
@@ -1219,7 +1220,7 @@ function guitarVoicings(rootPc, ivs){
   const fingersOk = taps => {
     const nz = taps.filter(t => t.g > 0);
     if(!nz.length) return false;                       // 全是空弦，不成指型
-    if(Math.min(...nz.map(t => t.g)) > BUI_MAX_GRADE) return false;   // 不超出指板
+    if(Math.min(...nz.map(t => t.g)) > GT_POS_MAX) return false;   // 不进入 12 品以上
     const byFret = new Map();
     for(const t of nz){
       if(!byFret.has(t.g)) byFret.set(t.g, []);
@@ -1255,14 +1256,13 @@ function guitarVoicings(rootPc, ivs){
   const collectWith = okFn => {
     const raw = [];
     /* 根音位置：遍历所有可作根音的弦与品位。
-       两层剪枝都已去掉——
-       · 「剩余弦数 ≥ 和弦音数」：11/13 和弦必须省略音，保留它会让 7 音和弦直接 0 结果
-       · 「根音品位 < 12」：会把整条高把位指法挡在门外。Ebdim(add9) 的低把位确实按不出来，
-         但它能在 4弦13品/3弦11品/2弦10品/1弦13品 按出来，此限制一加就误报「找不到按法」
-       不完整的结果交给各 level 过滤器剔除；排序按最高品位升序，低把位自然排在最前 */
+       buitar 的「剩余弦数 ≥ 和弦音数」剪枝已去掉：11/13 和弦必须省略音，
+       保留它会让 7 音和弦的根音循环上界成负数、直接 0 结果。
+       不完整的结果交给各 level 过滤器剔除；排序按最高品位升序，低把位自然排在最前。
+       品位上限由 GT_POS_MAX 统一控制（指板只建到 11 品，12 品以上不生成）。 */
     for(let s = 0; s < keyboard.length; s++){
       for(const point of keyboard[s]){
-        if(point.tone !== root || point.g > BUI_MAX_GRADE) continue;
+        if(point.tone !== root || point.g > GT_POS_MAX) continue;
         const list = [];
         findNext(s + 1, [point], list);
         raw.push(...list);

@@ -1233,9 +1233,13 @@ function guitarVoicings(rootPc, ivs, maxResults=12){
 /* SVG 指法图（参考 buitar SvgChord：横按、闷音✕、空弦○、超品偏移） */
 function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
   const n = points.length;                       // 6 弦（points[0]=6弦低音 … [5]=1弦）
-  const width = size*0.7;
-  const sd = width/(n-1);
   const titleH = size*0.1;
+  // 左侧专门留出「把位栏」，避免把位文字挤到画布外（旧版只留 6px，"1品"都放不下）
+  const gutter = size*0.33;
+  const marginR = size*0.07;                        // 右侧留白，避免最右弦的圆点溢出
+  const width = size - gutter - marginR;
+  const pad = gutter, padY = titleH;
+  const sd = width/(n-1);
   const fontSize = size/11, lw = Math.max(size/100, 1);
   const frets = points.map(p=>p.fret);
   const played = frets.filter(f=>f>0);
@@ -1248,37 +1252,57 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
   const span = played.length ? (maxF - offset) : 0;     // 需要显示到的品数
   const cells = Math.max(4, span);
   const fd = width/cells;
-  const pad = (size-width)/2, padY = pad + titleH;
   const gridH = cells*fd;
-  const totalH = padY + gridH + pad*0.6;
+  const totalH = padY + gridH + size*0.09;
   let s = `<svg class="gdiag" width="${size}" height="${totalH}" viewBox="0 0 ${size} ${totalH}" xmlns="http://www.w3.org/2000/svg">`;
   // 品柱（cells 格 cells+1 线；i===0 为粗线即弦枕/起点）
   for(let i=0;i<=cells;i++){
     const y = padY + i*fd;
-    s += `<line x1="${pad}" y1="${y}" x2="${pad+width}" y2="${y}" stroke="${color}" stroke-width="${i===0?lw*2.6:lw}"/>`;
+    // 开放把位（offset===0）顶线画成更粗的"弦枕"，视觉上明确这是琴头侧
+    const w0 = (i===0) ? (offset===0 ? lw*3.4 : lw*2.6) : lw;
+    s += `<line x1="${pad}" y1="${y}" x2="${pad+width}" y2="${y}" stroke="${color}" stroke-width="${w0}"/>`;
   }
   // 弦
   for(let i=0;i<n;i++){
     const x = pad + i*sd;
     s += `<line x1="${x}" y1="${padY}" x2="${x}" y2="${padY+gridH}" stroke="${color}" stroke-width="${lw*0.8}"/>`;
   }
-  // 起始品数字（把位标记，始终显示）—— 写成「第N品」更直观
-  const posNum = offset > 0 ? offset + 1 : 1;
-  const posTxt = posNum === 1 ? '1品' : posNum + '品';
-  s += `<text x="${pad-4}" y="${padY + fd*0.9}" fill="${color}" font-size="${fontSize*0.8}" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="700">${posTxt}</text>`;
+  // 把位栏：写清本图覆盖的品格范围
+  // 开放把位 → 「空弦位」；高位窗口 → 「7–10品」这种明确区间
+  const winEnd = offset + cells;                    // 窗口最后一品
+  // 优先用完整区间；放不下时退化为紧凑写法，保证字号始终可读（不小于 5.2px）
+  const posLong = offset === 0 ? '空弦位'
+    : (winEnd > minF ? (offset+1) + '–' + winEnd + '品' : (offset+1) + '品');
+  const posShort = offset === 0 ? '空弦位' : (offset+1) + '品起';
+  const posX = pad - 2.5, posAvail = pad - 2.5, posIdeal = size*0.088;
+  // 估算宽度：中文/全角/破折号 1.0em，ASCII 0.62em，留 8% 余量
+  const estW = (txt, fs) => [...txt].reduce((a,c)=>
+    a + (/[\u4e00-\u9fa5\u3000-\u303f\u2013\u2014]/.test(c) ? fs : fs*0.62), 0) * 1.08;
+  let posTxt = posLong, posFs = posIdeal;
+  if(estW(posTxt, posIdeal) > posAvail){
+    // 完整区间太宽 → 用紧凑写法
+    posTxt = posShort; posFs = posIdeal;
+    const need = estW(posTxt, posIdeal);
+    if(need > posAvail) posFs = posIdeal * (posAvail/need);
+  }
+  s += `<text x="${posX}" y="${padY + fd*0.85}" fill="${color}" font-size="${posFs.toFixed(2)}" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="700">${posTxt}</text>`;
   // 弦上的标记：-1 闷音✕（图外上方），0 空弦○，否则实心点
+  // 半径按「弦间距」而非网格宽度计算，网格变窄时不会互相重叠或溢出画布
+  const rDot = Math.min(sd*0.32, fd*0.42);
+  const rOpen = Math.min(sd*0.20, fd*0.30);
+  const kMute = Math.min(sd*0.16, fd*0.22);
   frets.forEach((f,i)=>{
     const x = pad + i*sd;
     const yAbove = padY - fd*0.38;
     if(f === -1){
-      const k = width/22;
+      const k = kMute;
       s += `<line x1="${x-k}" y1="${yAbove-k}" x2="${x+k}" y2="${yAbove+k}" stroke="${color}" stroke-width="${lw*0.7}"/>`;
       s += `<line x1="${x-k}" y1="${yAbove+k}" x2="${x+k}" y2="${yAbove-k}" stroke="${color}" stroke-width="${lw*0.7}"/>`;
     } else if(f === 0){
-      s += `<circle cx="${x}" cy="${yAbove}" r="${width/20}" fill="none" stroke="${color}" stroke-width="${lw*0.8}"/>`;
+      s += `<circle cx="${x}" cy="${yAbove}" r="${rOpen}" fill="none" stroke="${color}" stroke-width="${lw*0.8}"/>`;
     } else {
       const y = padY + (f - offset - 0.5)*fd;
-      s += `<circle cx="${x}" cy="${y}" r="${width/11}" fill="${color}"/>`;
+      s += `<circle cx="${x}" cy="${y}" r="${rDot}" fill="${color}"/>`;
     }
   });
   // 大横按（最低按品上 ≥3 根弦且低音侧无空弦穿越）
@@ -1294,7 +1318,9 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0'){
       if(valid){
         const x1 = pad + barreIdx[0]*sd, x2 = pad + barreIdx[barreIdx.length-1]*sd;
         const y = padY + (minF - offset - 0.5)*fd;
-        s += `<rect x="${x1 - sd*0.28}" y="${y - width/24}" width="${x2-x1 + sd*0.56}" height="${width/12}" rx="${width/24}" fill="${color}"/>`;
+        // 横按条粗细随格高/弦距走，保持与圆点视觉匹配
+        const barH = Math.min(fd*0.34, sd*0.42);
+        s += `<rect x="${x1 - sd*0.28}" y="${y - barH/2}" width="${x2-x1 + sd*0.56}" height="${barH}" rx="${barH/2}" fill="${color}"/>`;
       }
     }
   }

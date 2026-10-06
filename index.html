@@ -1233,7 +1233,9 @@ function guitarVoicings(rootPc, ivs, maxResults=12){
   const collectWith = okFn => {
     const raw = [];
     // 根音位置（bulet 只以和弦第一个音为根音，grade<12）
-    for(let s = 0; s <= keyboard.length - chordsPc.length; s++){
+    // 遍历所有可作根音的弦。不用 buitar 的「剩余弦数 ≥ 和弦音数」剪枝：
+    // 11/13 和弦必须省略音，剪枝会让 7 音和弦直接 0 结果；不完整结果交给各 level 过滤器剔除
+    for(let s = 0; s < keyboard.length; s++){
       for(const point of keyboard[s]){
         if(point.tone !== root || point.g >= 12) continue;
         const list = [];
@@ -1245,43 +1247,37 @@ function guitarVoicings(rootPc, ivs, maxResults=12){
               .reduce(cover, [])
               .sort((a, b) => Math.max(...a.map(t => t.g)) - Math.max(...b.map(t => t.g)));
   };
-  /* 组成音要求（L1 = buitar 原规则；L2/L3 补它源码标注的 TODO：吉他上 7/9/11 和弦
-     常省略纯五度。省略只能是纯五度，3 音与 7/9/11/13 等特征音一律不可省，
-     否则和弦性质会改变，例如省掉七音 C7 就退化成 C 大三和弦） */
+  /* 组成音要求（L1 = buitar 原规则；L2/L3 补它源码标注的 TODO）
+     吉他只有 6 根弦，11/13 和弦必然要省略音。可省略的仅限：
+       · 自然五度
+       · 11/13 和弦里的 9 音、13 和弦里的 11 音
+     其余一律不可省：根音、三音、七音、以及名称来源音（11/13）和所有变化音。
+     否则和弦名就名不副实——省掉七音的 13 和弦只剩一个六和弦，省掉九音的 add9 就是大三和弦。 */
   const toneSet = taps => new Set(taps.map(t => t.tone));
-  const omitAllowed = new Set();
-  if(chordsPc.length >= 4 && chordsPc.includes((root + 7) % 12)) omitAllowed.add((root + 7) % 12);
-  const ivOf = pc => (((pc - root) % 12) + 12) % 12;
-  const extPcs = chordsPc.slice().sort((a, b) => ivOf(a) - ivOf(b))
-                        .filter(pc => [1,2,3,5,6,8,9,10,11].includes(ivOf(pc)));
-  const topExt = extPcs.length ? extPcs[extPcs.length - 1] : null;   // 最高延伸音
-  const missingOk = (taps, maxOmit) => {
-    const s = toneSet(taps);
-    if(!s.has(root)) return false;
-    const missing = chordsPc.filter(pc => !s.has(pc));
-    return missing.length <= maxOmit && missing.every(pc => omitAllowed.has(pc));
-  };
+  const P5 = (root + 7) % 12, M9 = (root + 2) % 12, P11 = (root + 5) % 12, M13 = (root + 9) % 12;
+  const has13 = chordsPc.includes(M13) || chordsPc.includes((root + 8) % 12);
+  const has11 = chordsPc.includes(P11) || chordsPc.includes((root + 6) % 12);
+  const omitSet = new Set();
+  if(chordsPc.length >= 4 && chordsPc.includes(P5)) omitSet.add(P5);          // 自然五度
+  if((has13 || has11) && chordsPc.includes(M9)) omitSet.add(M9);              // 9 音
+  if(has13 && chordsPc.includes(P11)) omitSet.add(P11);                        // 11 音
+  const mustPcs = chordsPc.filter(pc => !omitSet.has(pc));
   const levels = [
-    taps => toneSet(taps).size === chordsPc.length,   // L1 buitar 完整组成音
-    taps => missingOk(taps, 1),                       // L2 仅允许省纯五度
-    taps => {                                         // L3 兜底（扩展和弦）：保留根音+三音+最高延伸音
-      const s = toneSet(taps);
-      if(!s.has(root) || s.size < 3) return false;
-      return [3,4,5].some(iv => s.has((root + iv) % 12)) && (!topExt || s.has(topExt));
-    }
+    taps => toneSet(taps).size === chordsPc.length,          // L1 buitar 完整组成音
+    taps => mustPcs.every(pc => toneSet(taps).has(pc))       // L2 必备音齐全 → 和弦性质不变
   ];
   const seenTaps = new Set(), picked = [];
-  for(let lv = 0; lv < levels.length; lv++){
-    const res = collectWith(levels[lv]);
-    if(!res.length) continue;
-    for(const taps of res){
+  const gather = lv => {
+    for(const taps of collectWith(levels[lv])){
       const sig = taps.map(t => t.s + ':' + t.g).join('|');
       if(seenTaps.has(sig)) continue;
       seenTaps.add(sig);
       picked.push({ taps, lv });
     }
-    if(picked.length >= maxResults * 3) break;
-  }
+  };
+  // L1/L2 都保证「和弦性质不变」。不再做进一步降级：那会生成名不副实的指型
+  // （例如 F7♯9♯5 只剩 F 增三和弦），宁可显示「找不到按法」。
+  gather(0); gather(1);
   // 统一排序：最高品位低者在前（低把位/常用开放指型优先）；同位时组成音更完整者优先
   const gradeOf = taps => Math.max(...taps.map(t => t.g));
   picked.sort((a, b) => (gradeOf(a.taps) - gradeOf(b.taps)) || (a.lv - b.lv));

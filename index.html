@@ -1167,73 +1167,140 @@ function seqNote(midi, when, dur, vel, tone){
 
 
 /* ============================================================
-   吉他和弦：voicing 推导 + SVG 指法图（参考 buitar SvgChord 结构）
+   吉他和弦：指法库直接移植 buitar（@buitar/to-guitar）+ SVG 指法图
    ============================================================ */
 const GT_STRINGS = [40,45,50,55,59,64];   // E2 A2 D3 G3 B3 E4 (6弦→1弦 MIDI)
-const GT_FRET_MAX = 15;                    // 搜索上限品
-const GT_REACH = 4;                        // 指距
 
-/* 音集（rootPc + ivs）在吉他上枚举按法：
-   - 低音声部优先含根音（voicing 规则）
-   - 指距 ≤ GT_REACH
-   - 返回按分数排序的指法数组 [{points:[{fret,string}], frets:[6], score}] */
+/* 音集（rootPc + ivs）=> 吉他指法。
+   本函数直接移植 @buitar/to-guitar v0.0.14 的 transChordTaps 及其过滤器
+   （作者 Barba828，MIT 许可），不再自创按法。
+   弦序与 buitar 对齐：数组下标 0 = 第6弦(E2)，5 = 第1弦(E4)。
+   只用 buitar 既有规则：
+     · 从根音弦沿高音方向「连续」按到第1弦（低音侧可闷，不跳弦）
+     · 指距 < FINGER_GRADE_NUMS(4)
+     · 组成音必须完整（integrityFilter）
+     · 左手手指数 ≤ 4（fingersFilter）
+     · 相邻弦不同音、无重复绝对音高（repeatingPitchFilter）
+     · 指型互相覆盖时去重（coverTapsReducer）
+     · 按最高品位升序 → 低把位/常用开放指型自动排前（gradeSorter）
+   扩展和弦（9/11/13）常无法完整成指，严格模式为空时放宽为「含根音 + ≥3 个不同和弦音」。 */
+const BUI_MAX_GRADE = 17;      // buitar GRADE_NUMS：指板品数
+const BUI_FINGER_SPAN = 4;     // buitar FINGER_GRADE_NUMS：指距上限
 function guitarVoicings(rootPc, ivs, maxResults=12){
-  const pcs = new Set(ivs.map(v => (rootPc + v) % 12));
   const root = ((rootPc % 12) + 12) % 12;
-  const results = [];
-  // 每根弦候选品位（0=空弦, -1=闷音在收尾组合处理）
-  const cand = GT_STRINGS.map(open => {
-    const arr = [-1];
-    for(let f=0; f<=GT_FRET_MAX; f++){
-      if(pcs.has((open + f) % 12)) arr.push(f);
-    }
+  const chordsPc = [...new Set(ivs.map(v => (((root + v) % 12) + 12) % 12))];
+  if(!chordsPc.length) return [];
+  // 指板：每根弦的全部品位点（下标 0 = 6弦）
+  const keyboard = GT_STRINGS.map((open, s) => {
+    const arr = [];
+    for(let g = 0; g <= BUI_MAX_GRADE; g++) arr.push({ s, g, tone: ((open + g) % 12) });
     return arr;
   });
-  // 逐弦 DFS
-  const walk = (si, frets, fretted) => {
-    if(si === 6){
-      // 必须至少 3 根弦发声；有按品时指距约束
-      const played = frets.filter(f => f >= 0);
-      if(played.length < 3) return;
-      const minF = Math.min(...played), maxF = Math.max(...played);
-      if(maxF - minF > GT_REACH) return;
-      // 低音弦（4,5,6弦 index 0..2）若发声，优先含根音；否则整条低音闷音
-      const bassPcs = [];
-      for(let i=0;i<3;i++){ if(frets[i] >= 0) bassPcs.push((GT_STRINGS[i] + frets[i]) % 12); }
-      const hasRootBass = bassPcs.length > 0 && bassPcs.every(pc => pc === root || !pcs.has(pc) ? pc === root : false);
-      // 计分：低把位优先；低音弦根音加分、变化音轻扣（不压过把位差）
-      let score = played.length * 10;
-      if(bassPcs.length){
-        const bassRoots = bassPcs.filter(pc => pc === root).length;
-        score += bassRoots * 14;
-        const bassAlts = bassPcs.filter(pc => pc !== root).length;
-        score -= bassAlts * 6;
-      }
-      score -= maxF * 2.5;
-      score += frets.filter(f=>f===0).length * 3;
-      // 根音必须出现在和弦里
-      const allPcs = frets.map((f,i)=> f>=0 ? (GT_STRINGS[i]+f)%12 : null).filter(v=>v!==null);
-      if(!allPcs.includes(root)) return;
-      // 左手手指编号（同一品位共用一个编号 → 横按天然同号）
-      const fingers = assignFingers(frets);
-      results.push({points: frets.map((f,i)=>({fret:f, string:6-i, finger: fingers[i]})), frets:[...frets], score});
-      return;
+  // buitar findNextString：逐弦向高音方向取音
+  const findNext = (s, taps, out) => {
+    if(s >= keyboard.length){ out.push(taps); return; }
+    for(const point of keyboard[s]){
+      if(!chordsPc.includes(point.tone)) continue;
+      if(point.g === 0 || taps.every(t => t.g === 0 || Math.abs(t.g - point.g) < BUI_FINGER_SPAN))
+        findNext(s + 1, [...taps, point], out);
     }
-    for(const f of cand[si]) walk(si+1, [...frets, f], fretted);
   };
-  walk(0, [], 0);
-  // 去重（闷音/空弦同音异位）+ 排序
-  const seen = new Set();
-  results.sort((a,b)=>b.score - a.score);
-  const uniq = [];
-  for(const r of results){
-    const sig = r.frets.join(',');
+  // fingersFilter：横按食指计 1，其余每个按位再计 1；总数须 1~4，且最低/非零最低按品 < 12
+  const fingersOk = taps => {
+    const minG = Math.min(...taps.map(t => t.g));
+    let n = minG > 0 ? 1 : 0, notZeroMin = Infinity;
+    for(const t of taps){
+      if(t.g > minG) n++;
+      if(t.g > 0 && t.g < notZeroMin) notZeroMin = t.g;
+    }
+    return n <= 4 && n >= 1 && minG < 12 && notZeroMin < 12;
+  };
+  // repeatingPitchFilter：相邻弦不得同音，且不得出现相同绝对音高
+  const repeatOk = taps => {
+    for(let i = 0; i < taps.length - 1; i++) if(taps[i].tone === taps[i + 1].tone) return false;
+    return new Set(taps.map(t => GT_STRINGS[t.s] + t.g)).size === taps.length;
+  };
+  // coverTapsReducer：指型互相包含时合并，避免同型重复
+  const cover = (acc, cur) => {
+    for(let i = 0; i < acc.length; i++){
+      const prev = acc[i];
+      if(prev.every(p => cur.includes(p))){ acc[i] = cur; return acc; }
+      if(cur.every(p => prev.includes(p))) return acc;
+    }
+    acc.push(cur);
+    return acc;
+  };
+  const collectWith = okFn => {
+    const raw = [];
+    // 根音位置（bulet 只以和弦第一个音为根音，grade<12）
+    for(let s = 0; s <= keyboard.length - chordsPc.length; s++){
+      for(const point of keyboard[s]){
+        if(point.tone !== root || point.g >= 12) continue;
+        const list = [];
+        findNext(s + 1, [point], list);
+        raw.push(...list);
+      }
+    }
+    return raw.filter(okFn).filter(fingersOk).filter(repeatOk)
+              .reduce(cover, [])
+              .sort((a, b) => Math.max(...a.map(t => t.g)) - Math.max(...b.map(t => t.g)));
+  };
+  /* 组成音要求（L1 = buitar 原规则；L2/L3 补它源码标注的 TODO：吉他上 7/9/11 和弦
+     常省略纯五度。省略只能是纯五度，3 音与 7/9/11/13 等特征音一律不可省，
+     否则和弦性质会改变，例如省掉七音 C7 就退化成 C 大三和弦） */
+  const toneSet = taps => new Set(taps.map(t => t.tone));
+  const omitAllowed = new Set();
+  if(chordsPc.length >= 4 && chordsPc.includes((root + 7) % 12)) omitAllowed.add((root + 7) % 12);
+  const ivOf = pc => (((pc - root) % 12) + 12) % 12;
+  const extPcs = chordsPc.slice().sort((a, b) => ivOf(a) - ivOf(b))
+                        .filter(pc => [1,2,3,5,6,8,9,10,11].includes(ivOf(pc)));
+  const topExt = extPcs.length ? extPcs[extPcs.length - 1] : null;   // 最高延伸音
+  const missingOk = (taps, maxOmit) => {
+    const s = toneSet(taps);
+    if(!s.has(root)) return false;
+    const missing = chordsPc.filter(pc => !s.has(pc));
+    return missing.length <= maxOmit && missing.every(pc => omitAllowed.has(pc));
+  };
+  const levels = [
+    taps => toneSet(taps).size === chordsPc.length,   // L1 buitar 完整组成音
+    taps => missingOk(taps, 1),                       // L2 仅允许省纯五度
+    taps => {                                         // L3 兜底（扩展和弦）：保留根音+三音+最高延伸音
+      const s = toneSet(taps);
+      if(!s.has(root) || s.size < 3) return false;
+      return [3,4,5].some(iv => s.has((root + iv) % 12)) && (!topExt || s.has(topExt));
+    }
+  ];
+  const seenTaps = new Set(), picked = [];
+  for(let lv = 0; lv < levels.length; lv++){
+    const res = collectWith(levels[lv]);
+    if(!res.length) continue;
+    for(const taps of res){
+      const sig = taps.map(t => t.s + ':' + t.g).join('|');
+      if(seenTaps.has(sig)) continue;
+      seenTaps.add(sig);
+      picked.push({ taps, lv });
+    }
+    if(picked.length >= maxResults * 3) break;
+  }
+  // 统一排序：最高品位低者在前（低把位/常用开放指型优先）；同位时组成音更完整者优先
+  const gradeOf = taps => Math.max(...taps.map(t => t.g));
+  picked.sort((a, b) => (gradeOf(a.taps) - gradeOf(b.taps)) || (a.lv - b.lv));
+  const seen = new Set(), out = [];
+  for(const { taps } of picked){
+    const frets = [-1,-1,-1,-1,-1,-1];
+    taps.forEach(t => { frets[t.s] = t.g; });
+    const sig = frets.join(',');
     if(seen.has(sig)) continue;
     seen.add(sig);
-    uniq.push(r);
-    if(uniq.length >= maxResults) break;
+    const fingers = assignFingers(frets);
+    out.push({
+      points: frets.map((f,i) => ({ fret: f, string: 6 - i, finger: fingers[i] })),
+      frets,
+      score: 100 - gradeOf(taps)
+    });
+    if(out.length >= maxResults) break;
   }
-  return uniq;
+  return out;
 }
 
 /* 左手手指编号：按品位从低到高依次 1(食指) 2(中指) 3(无名) 4(小指)

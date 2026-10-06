@@ -1186,7 +1186,7 @@ const GT_STRINGS = [40,45,50,55,59,64];   // E2 A2 D3 G3 B3 E4 (6弦→1弦 MIDI
    扩展和弦（9/11/13）常无法完整成指，严格模式为空时放宽为「含根音 + ≥3 个不同和弦音」。 */
 const BUI_MAX_GRADE = 17;      // buitar GRADE_NUMS：指板品数
 const BUI_FINGER_SPAN = 4;     // buitar FINGER_GRADE_NUMS：指距上限
-function guitarVoicings(rootPc, ivs, maxResults=12){
+function guitarVoicings(rootPc, ivs){
   const root = ((rootPc % 12) + 12) % 12;
   const chordsPc = [...new Set(ivs.map(v => (((root + v) % 12) + 12) % 12))];
   if(!chordsPc.length) return [];
@@ -1294,7 +1294,6 @@ function guitarVoicings(rootPc, ivs, maxResults=12){
       frets,
       score: 100 - gradeOf(taps)
     });
-    if(out.length >= maxResults) break;
   }
   return out;
 }
@@ -1472,9 +1471,11 @@ function openGtPop(si, bi, x, y){
   const ch = sections[si].bars[bi];
   gtList.innerHTML = '';
   if(!ch){ closeGtPop(); return; }
-  document.getElementById('gtTitle').textContent = '吉他指法 · ' + ch.label;
-  const voicings = guitarVoicings(ch.rootPc, ch.ivs, 12);
+  const voicings = guitarVoicings(ch.rootPc, ch.ivs);
+  document.getElementById('gtTitle').textContent =
+    '吉他指法 · ' + ch.label + (voicings.length ? ' · ' + voicings.length + ' 个按法' : '');
   document.getElementById('gtClear').style.display = ch.gt ? '' : 'none';
+  const frag = document.createDocumentFragment();   // 一次性插入，避免逐个 append 反复重排
   voicings.forEach((v, vi)=>{
     const cur = ch.gt && ch.gt.frets.join(',') === v.frets.join(',');
     const d = document.createElement('div');
@@ -1491,8 +1492,9 @@ function openGtPop(si, bi, x, y){
         playGuitarStrum(tones, label);
       }
     });
-    gtList.appendChild(d);
+    frag.appendChild(d);
   });
+  gtList.appendChild(frag);
   if(voicings.length === 0){
     gtList.innerHTML = '<div style="grid-column:1/-1;color:#8a92a3;font-size:12px;padding:14px;text-align:center;">这个和弦在常规指距内找不到按法（可能是扩展和弦）</div>';
   }

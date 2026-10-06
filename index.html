@@ -1349,22 +1349,16 @@ function guitarDiagramSVG(points, size=72, color='#e8ebf0', textColor='#0b0e14')
     const x = pad + i*sd;
     s += `<line x1="${x}" y1="${padY}" x2="${x}" y2="${padY+gridH}" stroke="${color}" stroke-width="${lw*0.8}"/>`;
   }
-  // 把位栏：高位窗口写清覆盖的品格范围；开放把位不出字（弦枕粗线已能表明是琴头侧）
-  const winEnd = offset + cells;                    // 窗口最后一品
-  const posX = pad - 2.5, posAvail = pad - 2.5, posIdeal = size*0.088;
+  // 把位栏：只写起始品位数字（如 8 = 从第 8 品起），开放把位不出字（弦枕粗线已表明琴头侧）
+  const posX = pad - 2.5, posAvail = pad - 2.5;
   // 估算宽度：中文/全角/破折号 1.0em，ASCII 0.62em，留 8% 余量
   const estW = (txt, fs) => [...txt].reduce((a,c)=>
     a + (/[\u4e00-\u9fa5\u3000-\u303f\u2013\u2014]/.test(c) ? fs : fs*0.62), 0) * 1.08;
   if(offset > 0){
-    // 优先用完整区间；放不下时退化为紧凑写法，保证字号始终可读
-    let posTxt = (winEnd > minF) ? (offset+1) + '–' + winEnd + '品' : (offset+1) + '品';
-    let posFs = posIdeal;
-    if(estW(posTxt, posIdeal) > posAvail){
-      posTxt = (offset+1) + '品起';
-      const need = estW(posTxt, posIdeal);
-      if(need > posAvail) posFs = posIdeal * (posAvail/need);
-    }
-    s += `<text x="${posX}" y="${padY + fd*0.85}" fill="${color}" font-size="${posFs.toFixed(2)}" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="700">${posTxt}</text>`;
+    // 数字尽量写大：受格高（不压到相邻品格线）与左侧栏宽双重限制
+    const posTxt = String(offset + 1);
+    const posFs = Math.min(size*0.22, fd*0.95, posAvail / estW(posTxt, 1));
+    s += `<text x="${posX}" y="${padY + fd*0.5 + posFs*0.35}" fill="${color}" font-size="${posFs.toFixed(2)}" text-anchor="end" font-family="ui-rounded,sans-serif" font-weight="700">${posTxt}</text>`;
   }
   // 弦上的标记：-1 闷音✕（图外上方），0 空弦○，否则实心点
   // 半径按「弦间距」而非网格宽度计算，网格变窄时不会互相重叠或溢出画布
